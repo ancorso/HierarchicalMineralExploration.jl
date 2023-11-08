@@ -112,10 +112,10 @@ function compute_logpdf(domain_ensemble, xobs, thickness_obs, grade_obs, structu
     for domain in domain_ensemble
         fx_thickness = GP((x) -> domain[:,:,1][x...], KERNEL)(xobs)
         fx_grade = GP((x) -> domain[:,:,2][x...], KERNEL)(xobs)
-        logpdf_structural = sum([logpdf(Normal(domain[:,:,1][xobs[:,i]...], DOMAIN_OBS_NOISE), d) for (i, d) in enumerate(structural_obs)])
-        logpdf_geochem_obs = sum([logpdf(Normal(domain[:,:,2][xobs[:,i]...], DOMAIN_OBS_NOISE), d) for (i, d) in enumerate(geochem_obs)])
-        push!(logpdfs_structural, logpdf(fx_thickness, thickness_obs) + logpdf_structural)
-        push!(logpdfs_geochem, logpdf(fx_grade, grade_obs) + logpdf_geochem_obs)
+        # logpdf_structural = sum([logpdf(Normal(domain[:,:,1][xobs[:,i]...], DOMAIN_OBS_NOISE), d) for (i, d) in enumerate(structural_obs)])
+        # logpdf_geochem_obs = sum([logpdf(Normal(domain[:,:,2][xobs[:,i]...], DOMAIN_OBS_NOISE), d) for (i, d) in enumerate(geochem_obs)])
+        push!(logpdfs_structural, logpdf(fx_thickness, thickness_obs)) # + logpdf_structural)
+        push!(logpdfs_geochem, logpdf(fx_grade, grade_obs))# + logpdf_geochem_obs)
     end
 
     return logsumexp(logpdfs_structural) + log(1.0/length(logpdfs_structural)) + logsumexp(logpdfs_geochem) + log(1.0/length(logpdfs_geochem))
@@ -125,8 +125,8 @@ function compute_null_pdf(thickness_dist, thickness_obs, grade_dist, grade_obs, 
     sumlogpdf = 0
     sumlogpdf += sum([logpdf(thickness_dist, d) for d in thickness_obs])
     sumlogpdf += sum([logpdf(grade_dist, d) for d in grade_obs])
-    sumlogpdf += sum([logpdf(structural_dist, d) for d in structural_obs])
-    sumlogpdf += sum([logpdf(geochem_dist, d) for d in geochem_obs])
+    # sumlogpdf += sum([logpdf(structural_dist, d) for d in structural_obs])
+    # sumlogpdf += sum([logpdf(geochem_dist, d) for d in geochem_obs])
     return sumlogpdf
 end
 
@@ -174,6 +174,7 @@ savefig("figures/null_domains.png")
 plot_mineralization(cat(thickness_sample, grade_sample, dims=3))
 savefig("figures/null_min.png")
 
+
 # Plot the H1 example
 d = rand(hypotheses[1])
 s = sample_geology(d)
@@ -181,6 +182,14 @@ plot_domain(d)
 savefig("figures/h1_domains.png")
 plot_mineralization(s)
 savefig("figures/h1_min.png")
+
+histogram(thickness_sample[:], bins=0:1:15, normalize=true, alpha=0.5, label="Max Entropy")
+histogram!(s[:,:,1][:], bins=0:1:15, normalize=true, alpha=0.5, label="Model", size=(400,400))
+savefig("figures/thickness_hist.png")
+
+histogram(structural_sample[:], normalize=true, alpha=0.5, label="Max Entropy")
+histogram!(domain_gt[:,:,1][:], bins=0:1:15, normalize=true, alpha=0.5, label="Model", size=(400,400))
+savefig("figures/thickness_hist.png")
 
 # Construct a ground truth
 domain_gt = rand(hypotheses[1])
@@ -233,6 +242,8 @@ end
 gif(anim, "figures/likelihood_w_all.gif", fps=1)
 savefig(plots[end], "figures/likelihood_w_all.png")
 
+plots[end]
+
 # plot(1:2:length(grade_obs), logpdfs_1, label="H1")
 plot(1:2:length(grade_obs), logpdfs_2, label="H2")
 plot!(1:2:length(grade_obs), logpdfs_3, label="H3")
@@ -241,7 +252,10 @@ plot!(1:2:length(grade_obs), null_pdfs, label="Null")
 
 
 ## Make some simple figures regarding priors
-heatmap(ensembles[1][1][:,:,1], padding = (0.0, 0.0), c=:amp, axis=false, margin=-8Plots.mm, size=(400,400), colorbar=false)
+anim = @animate for i=1:10
+    heatmap(rand(hypotheses[1])[:,:,1], padding = (0.0, 0.0), c=:amp, axis=false, margin=-8Plots.mm, size=(400,400), colorbar=false)
+end
+gif(anim, "figures/example_hypothesis_1.gif", fps=3)
 savefig("figures/example_hypothesis_1.png")
 
 samples = [sample_geology(ensembles[1][i]) for i in 1:3]
@@ -250,7 +264,11 @@ for (i, s) in enumerate(samples)
     savefig("figures/example_hypothesis_1_sample_$(i).png")
 end
 
-heatmap(ensembles[2][1][:,:,1], padding = (0.0, 0.0), c=:amp, axis=false, margin=-8Plots.mm, size=(400,400), colorbar=false)
+anim = @animate for i=1:10
+    heatmap(rand(hypotheses[2])[:,:,1], padding = (0.0, 0.0), c=:amp, axis=false, margin=-8Plots.mm, size=(400,400), colorbar=false)
+end
+gif(anim, "figures/example_hypothesis_2.gif", fps=3)
+
 savefig("figures/example_hypothesis_2.png")
 
 samples = [sample_geology(ensembles[2][i]) for i in 1:3]
