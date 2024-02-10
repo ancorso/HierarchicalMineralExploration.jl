@@ -11,10 +11,19 @@ struct Hypothesis
     geochem_domains::Vector{GeochemicalDomainDistribution} # Geochemical domain distributions
 end
 
+struct MaxEntropyHypothesis
+    # TODO
+end
+
+"""
+    log-likelihood of the observations given the model
+"""
+loglikelihood(chains::Chains) = logsumexp(chains.value[end, :lp, :])
+
 """
     Constructs the model for 1 graben and 1 geochemical domain
 """
-@model function one_graben_one_geochem(observations, h::Hypothesis)
+@model function one_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
     N = h.N
     # This defines the grid points (used multiple times below for GP sampling)
     x = hcat([[i, j] for i in 1:N, j in 1:N][:]...)
@@ -38,7 +47,9 @@ end
         thicknessGP = posterior(fx, obs) # Creates the posterior disribution
     end
     # Now sample our GP to get the thickness distribution at all points
-    thickness = reshape(rand(thicknessGP(x, h.σ_thickness)), N, N)
+    if return_samples
+        thickness = reshape(rand(thicknessGP(x, h.σ_thickness)), N, N)
+    end
 
     # Sample the geochemical domain
     center ~ h.geochem_domains[1].center
@@ -66,7 +77,9 @@ end
             backgroundGradeGP = posterior(fx, obs) # Creates the posterior disribution
         end
     end
-    g_background = reshape(rand(backgroundGradeGP(x, h.σ_grade)), N, N)
+    if return_samples
+        g_background = reshape(rand(backgroundGradeGP(x, h.σ_grade)), N, N)
+    end
 
     # Inside geochemical domain model and sample
     geochem_dist = h.geochem_domains[1]
@@ -86,13 +99,14 @@ end
             geochemGP = posterior(fx, obs) # Creates the posterior disribution
         end
     end
-    g_geochem = reshape(rand(geochemGP(x, h.σ_grade)), N, N)
+    if return_samples
+        g_geochem = reshape(rand(geochemGP(x, h.σ_grade)), N, N)
 
-    # Compose the grade observation
-    grade = g_background .* (1.0 .- geochem) .+ g_geochem .* geochem
+        # Compose the grade observation
+        grade = g_background .* (1.0 .- geochem) .+ g_geochem .* geochem
 
-    # mineralization
-    mineralization = grade .* thickness
-
-    return (; graben, geochem, thickness, grade, mineralization)
+        # mineralization
+        mineralization = grade .* thickness
+        return (; graben, geochem, thickness, grade, mineralization)
+    end
 end

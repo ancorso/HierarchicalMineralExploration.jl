@@ -11,10 +11,10 @@ function plot_model(;graben, geochem, thickness, grade, observations)
     grade_obs = [v.grade for v in values(observations)]
 
     # Plot the structural domain
-    p_graben = heatmap(graben'; cmap=:amp, colorbar=false)
+    p_graben = heatmap(graben'; cmap=:amp, colorbar=false, clims=(0,1))
 
     # Plot the thickness
-    p_thickness = heatmap(thickness', colorbar=false)
+    p_thickness = heatmap(thickness', colorbar=false, clims=(0,12))
     scatter!(
         xpts,
         ypts;
@@ -26,10 +26,10 @@ function plot_model(;graben, geochem, thickness, grade, observations)
     )
 
     # Plot the geochemical domain
-    p_geochem = heatmap(geochem'; cmap=:algae, colorbar=false)
+    p_geochem = heatmap(geochem'; cmap=:algae, colorbar=false, clims=(0,1))
 
     # Plot the grade
-    p_grade = heatmap(grade', colorbar=false)
+    p_grade = heatmap(grade', colorbar=false, clims=(0,17))
     scatter!(
         xpts,
         ypts;

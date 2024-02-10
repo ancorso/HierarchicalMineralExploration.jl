@@ -21,7 +21,7 @@ h = Hypothesis(
 )
 
 # Sample one model
-m = one_graben_one_geochem(Dict(), h)
+m = one_graben_one_geochem(Dict(), h, true)
 res = m()
 
 # Obtain some observations
@@ -41,24 +41,46 @@ plot_model(;
 
 # Construct the conditional distribution
 mcond = one_graben_one_geochem(observations, h)
+mcond_w_samples = one_graben_one_geochem(observations, h, true)
 
-Nsamples = 100
-specs = MH()
+Nsamples = 10000
 num_chains = 10
-chains = mapreduce(c -> sample(mcond, specs, Nsamples), chainscat, 1:num_chains)
 
-fieldnames(typeof(chains))
-chains.value[:, 5, 1]
+chn1 = sample(mcond, PG(20), Nsamples)
+logprobs1 = chn1.value[:, :lp, 1]
 
-plot(chains.value[:, 5, 1])
+chn2 = sample(mcond, MH(), Nsamples)
+logprobs2 = chn2.value[:, :lp, 1]
 
-chains.value
-plot(chains)
+chn3 = sample(mcond, SMC(), Nsamples)
+logprobs3 = chn3.value[:, :lp, 1]
 
-outputs = generated_quantities(mcond, chains)
+chn4 = sample(mcond, IS(), Nsamples)
+logprobs3 = chn4.value[:, :lp, 1]
+
+plot(logprobs1, label="PG")
+plot(logprobs2, label="MH")
+plot!(logprobs3, label="SMC")
+
+
+
+chns = mapreduce(c -> sample(mcond, specs, Nsamples), chainscat, 1:num_chains)
+
+HierarchicalMineralExploration.loglikelihood(chns)
+
+
+outputs = generated_quantities(mcond_w_samples, chns[end,:,:])
+
+plot_model(;
+            graben=outputs[end, 1].graben,
+            thickness=outputs[end, 1].thickness,
+            grade=outputs[end, 1].grade,
+            geochem=outputs[end, 1].geochem,
+            observations,
+        )
 
 plots = []
-for i in 1:10
+for i in 1:1
     push!(
         plots,
         plot_model(;
