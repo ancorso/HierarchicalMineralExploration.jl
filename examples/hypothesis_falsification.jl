@@ -5,17 +5,8 @@ using StatsPlots
 using AbstractGPs
 
 ## Setup mineral system models
-K = Matern52Kernel() ∘ ScaleTransform(1.0 / 3.0)
-N = 32 # Number of grid points
-t₀ = ThicknessBackground(1.0, K) # Background thickness distribution (μ, kernel)
-σₜ = 0.01 # Noise on thickness observation
-grabens = [GrabenDistribution(; N, μ=6.0), GrabenDistribution(; N, μ=10.0)]
-γ₀ = GradeBackground(0.0, K) # Background grade distribution
-σᵧ = 0.01 # Standard deviation of the measurement noise on the grade
-geochem_domains = [
-    GeochemicalDomainDistribution(; N, μ=15.0, kernel=K),
-    GeochemicalDomainDistribution(; N, μ=10.0, kernel=K),
-]
+include("setup.jl")
+
 
 ## Build out various hypotheses
 hypotheses = [
@@ -24,7 +15,7 @@ hypotheses = [
     Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, geochem_domains), # Single graben, two geochem domains
     Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, [geochem_domains[1]]), # Single graben, single geochem domain
 ]
-max_ent_hypothesis = MaxEntropyHypothesis(Normal(6, 7), Normal(10,10))
+max_ent_hypothesis = MaxEntropyHypothesis(Normal(8, 8), Normal(8,8))
 
 ## Choose a ground truth hypothesis
 h = hypotheses[1]
@@ -41,46 +32,32 @@ observations = Dict(
 # Visualize the model and observations
 plot_model(; sample..., observations=observations)
 
-## Compute likelihoods:
-Nsamples = 1000
-Nchains = 1
+nobs_list = [1, 2, 5, 10] #, 20, 50, 100]
+logprobs_h1 = []
+logprobs_h2 = []
+logprobs_h3 = []
+logprobs_h4 = []
+logprobs_max_ent = []
 
-logprob(hypotheses[1], observations; Nsamples, Nchains)
-logprob(hypotheses[2], observations; Nsamples, Nchains)
-logprob(hypotheses[3], observations; Nsamples, Nchains)
-logprob(hypotheses[4], observations; Nsamples, Nchains)
-logprob(max_ent_hypothesis, observations)
-
-
-
-# Construct the conditional distribution
-mcond = m_type(observations, h)
-mcond_w_samples = m_type(observations, h, true)
-
-# Sample from the posterior
-Nsamples = 1000
-Nchains = 1
-alg = default_alg(h)
-
-
-# Run the chains and store the outcomes
-
-chns = mapreduce(c -> Turing.sample(mcond, alg, Nsamples), chainscat, 1:Nchains)
-logprob(chns)
-
-plot(chns[:, :lp, 1])
-outputs = generated_quantities(mcond_w_samples, chns[end, :, :])
-plots = []
-for i in 1:size(outputs,2)
-    push!(
-        plots,
-        plot_model(;
-            structural=outputs[end, i].structural,
-            thickness=outputs[end, i].thickness,
-            grade=outputs[end, i].grade,
-            geochemdomain=outputs[end, i].geochemdomain,
-            observations,
-        ),
+Nsamples = 100
+Nchains = 10
+for nobs in nobs_list
+    println("computing likelihoods for $nobs observations")
+    observations = Dict(
+        p => (thickness=sample.thickness[p...], grade=sample.grade[p...]) for p in pts[1:nobs]
     )
+    ## Compute likelihoods vs observations
+    push!(logprobs_h1, logprob(hypotheses[1], observations; Nsamples, Nchains))
+    push!(logprobs_h2, logprob(hypotheses[2], observations; Nsamples, Nchains))
+    push!(logprobs_h3, logprob(hypotheses[3], observations; Nsamples, Nchains))
+    push!(logprobs_h4, logprob(hypotheses[4], observations; Nsamples, Nchains))
+    push!(logprobs_max_ent, logprob(max_ent_hypothesis, observations))
 end
-plot(plots...; size=(1600, 1000))
+
+plot(nobs_list, logprobs_h1[end-3:end], label="Hypothesis 1 (correct)", xlabel="Number of observations", ylabel="Log likelihood", dpi=300)
+plot!(nobs_list, logprobs_h2[end-3:end], label="Hypothesis 2")
+plot!(nobs_list, logprobs_h3[end-3:end], label="Hypothesis 3")
+plot!(nobs_list, logprobs_h4[end-3:end], label="Hypothesis 4")
+plot!(nobs_list, logprobs_max_ent[end-3:end], label="Max Entropy Hypothesis")
+
+savefig("figures/hypothesis_likelihoods.png")

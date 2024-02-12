@@ -18,7 +18,7 @@ Defines the distributions used to sample geochemical domains.
         product_distribution([
             Distributions.Uniform(-N / 3.5, N / 3.5),
             Distributions.Uniform(-N / 3.5, N / 3.5),
-        ]) for i in 1:25
+        ]) for i in 1:10
     ]
     angle = Distributions.Uniform(0, 2π)
     μ           # Mean of the GP within this domain

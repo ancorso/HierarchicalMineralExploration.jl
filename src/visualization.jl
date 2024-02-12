@@ -51,7 +51,7 @@ end
 Plot a state with observations
 there is no domain information in the state
 """
-function plot_state(s, observations)
+function plot_state(s, observations=Dict())
     # Collect the observations for easy plotting
     xpts = [p[1] for p in keys(observations)]
     ypts = [p[2] for p in keys(observations)]

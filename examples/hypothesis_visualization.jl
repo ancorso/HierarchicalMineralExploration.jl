@@ -5,17 +5,7 @@ using StatsPlots
 using AbstractGPs
 
 ## Setup mineral system models
-K = Matern52Kernel() ∘ ScaleTransform(1.0 / 3.0)
-N = 32 # Number of grid points
-t₀ = ThicknessBackground(1.0, K) # Background thickness distribution (μ, kernel)
-σₜ = 0.01 # Noise on thickness observation
-grabens = [GrabenDistribution(; N, μ=6.0), GrabenDistribution(; N, μ=10.0)]
-γ₀ = GradeBackground(0.0, K) # Background grade distribution
-σᵧ = 0.01 # Standard deviation of the measurement noise on the grade
-geochem_domains = [
-    GeochemicalDomainDistribution(; N, μ=15.0, kernel=K),
-    GeochemicalDomainDistribution(; N, μ=10.0, kernel=K),
-]
+include("setup.jl")
 
 ## Build out various hypotheses
 hypotheses = [
@@ -26,65 +16,73 @@ hypotheses = [
 ]
 max_ent_hypothesis = MaxEntropyHypothesis(Normal(6, 7), Normal(10,10))
 
-## show the different models
-h = hypotheses[1]
-m_type = turing_model(h)
-m = m_type(Dict(), h, true)
+## Create some plots of the various hypotheses
+sample1 = turing_model(hypotheses[1])(Dict(), hypotheses[1], true)()
+plot_model(; sample1...)
+savefig("figures/hypothesis1.png")
+
+sample2 = turing_model(hypotheses[2])(Dict(), hypotheses[2], true)()
+plot_model(; sample2...)
+savefig("figures/hypothesis2.png")
+
+sample3 = turing_model(hypotheses[3])(Dict(), hypotheses[3], true)()
+plot_model(; sample3...)
+savefig("figures/hypothesis3.png")
+
+sample4 = turing_model(hypotheses[4])(Dict(), hypotheses[4], true)()
+plot_model(; sample4...)
+savefig("figures/hypothesis4.png")
+
+## Choose a ground truth hypothesis
+h_gt = hypotheses[1]
+m_type_gt = turing_model(h_gt)
+m = m_type_gt(Dict(), h_gt, true)
 sample = m()
 
 # Obtain some observations
-pts = [[rand(1:N), rand(1:N)] for _ in 1:10]
+pts = [[rand(1:N), rand(1:N)] for _ in 1:40]
 observations = Dict(
     p => (thickness=sample.thickness[p...], grade=sample.grade[p...]) for p in pts
 )
 
-## Compute likelihoods:
-Nsamples = 25
-Nchains = 10
-
-logprob(hypotheses[1], observations; Nsamples, Nchains)
-logprob(hypotheses[2], observations; Nsamples, Nchains)
-logprob(hypotheses[3], observations; Nsamples, Nchains)
-logprob(hypotheses[4], observations; Nsamples, Nchains)
-logprob(max_ent_hypothesism, observations)
-
 # Visualize the model and observations
 plot_model(; sample..., observations=observations)
+savefig("figures/observations.png")
+
+## Show what conditioning a hypothesis to a given set of data looks like
+h = hypotheses[1]
+m_type = turing_model(h)
 
 # Construct the conditional distribution
-mcond = one_graben_one_geochem(observations, h)
-mcond_w_samples = one_graben_one_geochem(observations, h, true)
+mcond = m_type(observations, h)
+mcond_w_samples = m_type(observations, h, true)
 
+# Sample from the posterior
+Nsamples = 1000
+Nchains = 1
+alg = HierarchicalMineralExploration.default_alg(h)
 
-Nsamples = 100
-N = 10
-alg = Gibbs(
-    (MH(:ltop), 1),
-    (MH(:lwidth), 1),
-    (MH(:rtop), 1),
-    (MH(:rwidth), 1),
-    (MH(:center), 1),
-    (MH(:angle), 1),
-    (MH(), 1),
-)
+# Run the chains and store the outcomes
+chns = mapreduce(c -> Turing.sample(mcond, alg, Nsamples), chainscat, 1:Nchains)
 
-chns = mapreduce(c -> sample(mcond, alg, Nsamples), chainscat, 1:N)
-
-HierarchicalMineralExploration.l
+# Compute the likelihood
+outputs = generated_quantities(mcond, chns[end, :, :])[1]
+plot(chns[:, :lp, 1]) # Show the likelihood progress over time
 
 outputs = generated_quantities(mcond_w_samples, chns[end, :, :])
-
+reshape(outputs, 1)
 plots = []
-for i in 1:10
+for i in 1:size(outputs,2)
     push!(
         plots,
         plot_model(;
-            graben=outputs[end, i].graben,
+            structural=outputs[end, i].structural,
             thickness=outputs[end, i].thickness,
             grade=outputs[end, i].grade,
-            geochem=outputs[end, i].geochem,
+            geochemdomain=outputs[end, i].geochemdomain,
             observations,
         ),
     )
 end
-plot(plots...; size=(1600, 4000), layout=(5, 2))
+plot(plots...; size=(800, 800))
+savefig("figures/conditioned_hypothesis.png")

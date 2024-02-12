@@ -7,6 +7,7 @@ using Parameters
 using Distributions
 using Random
 using Turing
+using Memoization
 using LazySets
 using AbstractGPs
 using Plots
@@ -14,6 +15,7 @@ using LogExpFunctions
 using POMDPs
 using POMDPTools
 using ParticleFilters
+using StatsBase
 
 include("domains.jl")
 export ThicknessBackground, GradeBackground

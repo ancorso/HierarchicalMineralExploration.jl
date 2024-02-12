@@ -49,55 +49,39 @@ function default_alg(hypothesis)
     if hypothesis isa Hypothesis
         if length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 2
             return Gibbs(
-                (MH(:ltop1), 1),
-                (MH(:ltop2), 1),
-                (MH(:lwidth1), 1),
-                (MH(:lwidth2), 1),
-                (MH(:rtop1), 1),
-                (MH(:rtop2), 1),
-                (MH(:rwidth1), 1),
-                (MH(:rwidth2), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
+                (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 4),
                 (MH(:center1), 1),
-                (MH(:center2), 1),
                 (MH(:angle1), 1),
+                (MH(:pts1), 1),
+                (MH(:center2), 1),
                 (MH(:angle2), 1),
-                (MH(), 20)
+                (MH(:pts2), 1),
             )
         elseif length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 1
             return Gibbs(
-                (MH(:ltop1), 1),
-                (MH(:ltop2), 1),
-                (MH(:lwidth1), 1),
-                (MH(:lwidth2), 1),
-                (MH(:rtop1), 1),
-                (MH(:rtop2), 1),
-                (MH(:rwidth1), 1),
-                (MH(:rwidth2), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
+                (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 4),
                 (MH(:center1), 1),
                 (MH(:angle1), 1),
-                (MH(), 10)
+                (MH(:pts1), 1)
             )
         elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 2
             return Gibbs(
-                (MH(:ltop1), 1),
-                (MH(:lwidth1), 1),
-                (MH(:rtop1), 1),
-                (MH(:rwidth1), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
                 (MH(:center1), 1),
                 (MH(:angle1), 1),
                 (MH(:center2), 1),
                 (MH(:angle2), 1),
-                (MH(), 20)
+                (MH(:pts1), 1),
+                (MH(:pts2), 1),
             )
         elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 1
             return Gibbs(
-                (MH(:ltop1), 1),
-                (MH(:lwidth1), 1),
-                (MH(:rtop1), 1),
-                (MH(:rwidth1), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
                 (MH(:center1), 1),
                 (MH(:angle1), 1),
-                (MH(), 10)
+                (MH(:pts1), 1)
             )
         else
             error("this configuration is not supported ") #TODO
@@ -106,12 +90,6 @@ function default_alg(hypothesis)
         error("Unknown hypothesis type")
     end
 end
-
-"""
-    mean log-likelihood of a set of chains. Only considers the likelihood of the last sample
-"""
-logprob(chains::Chains) =
-    logsumexp(chains.value[end, :lp, :]) - log(size(chains.value, 1))
 
 """
     loglikelihood(hypothesis, observations, alg, Nsamples, Nchains)
@@ -124,7 +102,8 @@ function logprob(h::Hypothesis, observations;alg=default_alg(h), Nsamples, Nchai
 
     # Run the chains and store the outcomes
     c = mapreduce(c -> Turing.sample(mcond, alg, Nsamples), chainscat, 1:Nchains)
-    return logprob(c)
+    outputs = generated_quantities(mcond, c[end, :, :]) # NOTE: this is an overestimate by just computing p(o | d)
+    return maximum(outputs) # NOTE: this is an overestimate by taking the max
 end
 
 """
@@ -163,6 +142,8 @@ end
     Constructs the model for 2 graben and 2 geochemical domain
 """
 @model function two_graben_two_geochem(observations, h::Hypothesis, return_samples=false)
+    marginal_loglikelihood = 0.0
+
     N = h.N
     # This defines the grid points (used multiple times below for GP sampling)
     xs = [[i, j] for i in 1:N, j in 1:N][:]
@@ -192,7 +173,9 @@ end
     if length(observations) > 0
         pts, obs = getobs(observations, :thickness)
         thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(thicknessGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         thicknessGP = posterior(thicknessGPx, obs)
     end
 
@@ -221,7 +204,9 @@ end
     pts, obs = getobs(observations, :grade, ingeochem1)
     if length(obs) > 0
         geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        lgprob = logpdf(geochemGP1x, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         geochemGP1 = posterior(geochemGP1x, obs)
     end
 
@@ -231,7 +216,9 @@ end
     pts, obs = getobs(observations, :grade, ingeochem2)
     if length(obs) > 0
         geochemGP2x = geochemGP2(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(geochemGP2x, obs) # Adds the loglikelihood
+        lgprob = logpdf(geochemGP2x, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         geochemGP2 = posterior(geochemGP2x, obs)
     end
 
@@ -241,7 +228,9 @@ end
     pts, obs = getobs(observations, :grade, inbackground)
     if length(obs) > 0
         backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(backgroundGradeGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         backgroundGradeGP = posterior(backgroundGradeGPx, obs)
     end
 
@@ -278,12 +267,14 @@ end
 
         return (; structural, geochemdomain, thickness, grade)
     end
+    return marginal_loglikelihood
 end
 
 """
     Constructs the model for 2 graben and 1 geochemical domain
 """
 @model function two_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
+    marginal_loglikelihood = 0.0
     N = h.N
     # This defines the grid points (used multiple times below for GP sampling)
     xs = [[i, j] for i in 1:N, j in 1:N][:]
@@ -313,7 +304,9 @@ end
     if length(observations) > 0
         pts, obs = getobs(observations, :thickness)
         thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(thicknessGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         thicknessGP = posterior(thicknessGPx, obs)
     end
 
@@ -333,7 +326,9 @@ end
     pts, obs = getobs(observations, :grade, ingeochem1)
     if length(obs) > 0
         geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        lgprob = logpdf(geochemGP1x, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         geochemGP1 = posterior(geochemGP1x, obs)
     end
 
@@ -343,7 +338,9 @@ end
     pts, obs = getobs(observations, :grade, inbackground)
     if length(obs) > 0
         backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(backgroundGradeGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         backgroundGradeGP = posterior(backgroundGradeGPx, obs)
     end
 
@@ -376,12 +373,14 @@ end
 
         return (; structural, geochemdomain, thickness, grade)
     end
+    return marginal_loglikelihood
 end
 
 """
     Constructs the model for 1 graben and 2 geochemical domain
 """
 @model function one_graben_two_geochem(observations, h::Hypothesis, return_samples=false)
+    marginal_loglikelihood = 0.0
     N = h.N
     # This defines the grid points (used multiple times below for GP sampling)
     xs = [[i, j] for i in 1:N, j in 1:N][:]
@@ -403,7 +402,9 @@ end
     if length(observations) > 0
         pts, obs = getobs(observations, :thickness)
         thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(thicknessGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         thicknessGP = posterior(thicknessGPx, obs)
     end
 
@@ -432,7 +433,9 @@ end
     pts, obs = getobs(observations, :grade, ingeochem1)
     if length(obs) > 0
         geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        lgprob = logpdf(geochemGP1x, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         geochemGP1 = posterior(geochemGP1x, obs)
     end
 
@@ -442,7 +445,9 @@ end
     pts, obs = getobs(observations, :grade, ingeochem2)
     if length(obs) > 0
         geochemGP2x = geochemGP2(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(geochemGP2x, obs) # Adds the loglikelihood
+        lgprob = logpdf(geochemGP2x, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         geochemGP2 = posterior(geochemGP2x, obs)
     end
 
@@ -452,7 +457,9 @@ end
     pts, obs = getobs(observations, :grade, inbackground)
     if length(obs) > 0
         backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(backgroundGradeGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         backgroundGradeGP = posterior(backgroundGradeGPx, obs)
     end
 
@@ -488,12 +495,14 @@ end
 
         return (; structural, geochemdomain, thickness, grade)
     end
+    return marginal_loglikelihood
 end
 
 """
     Constructs the model for 1 graben and 1 geochemical domain
 """
 @model function one_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
+    marginal_loglikelihood = 0.0
     N = h.N
     # This defines the grid points (used multiple times below for GP sampling)
     xs = [[i, j] for i in 1:N, j in 1:N][:]
@@ -515,7 +524,9 @@ end
     if length(observations) > 0
         pts, obs = getobs(observations, :thickness)
         thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(thicknessGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         thicknessGP = posterior(thicknessGPx, obs)
     end
 
@@ -535,7 +546,9 @@ end
     pts, obs = getobs(observations, :grade, ingeochem1)
     if length(obs) > 0
         geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        lgprob = logpdf(geochemGP1x, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         geochemGP1 = posterior(geochemGP1x, obs)
     end
 
@@ -545,7 +558,9 @@ end
     pts, obs = getobs(observations, :grade, inbackground)
     if length(obs) > 0
         backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        lgprob = logpdf(backgroundGradeGPx, obs)
+        marginal_loglikelihood += lgprob
+        Turing.@addlogprob! lgprob # Adds the loglikelihood
         backgroundGradeGP = posterior(backgroundGradeGPx, obs)
     end
 
@@ -577,4 +592,5 @@ end
 
         return (; structural, geochemdomain, thickness, grade)
     end
+    return marginal_loglikelihood
 end
