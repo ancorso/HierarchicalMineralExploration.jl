@@ -11,14 +11,484 @@ struct Hypothesis
     geochem_domains::Vector{GeochemicalDomainDistribution} # Geochemical domain distributions
 end
 
+"""
+    A hypothesis that assumes the maximum entropy distribution over the observations
+"""
 struct MaxEntropyHypothesis
-    # TODO
+    thickness_dist
+    grade_dist
 end
 
 """
-    log-likelihood of the observations given the model
+    turing_model(hypothesis)
+
+    Return the appropriate Turing model function for the given `hypothesis`.
 """
-loglikelihood(chains::Chains) = logsumexp(chains.value[end, :lp, :])
+function turing_model(hypothesis)
+    if hypothesis isa Hypothesis
+        if length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 2
+            return two_graben_two_geochem
+        elseif length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 1
+            return two_graben_one_geochem
+        elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 2
+            return one_graben_two_geochem
+        elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 1
+            return one_graben_one_geochem
+        else
+            error("this configuration is not supported ") #TODO
+        end
+    else
+        error("Unknown hypothesis type")
+    end
+end
+
+"""
+Produce the default sampling algorithm
+"""
+function default_alg(hypothesis)
+    if hypothesis isa Hypothesis
+        if length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 2
+            return Gibbs(
+                (MH(:ltop1), 1),
+                (MH(:ltop2), 1),
+                (MH(:lwidth1), 1),
+                (MH(:lwidth2), 1),
+                (MH(:rtop1), 1),
+                (MH(:rtop2), 1),
+                (MH(:rwidth1), 1),
+                (MH(:rwidth2), 1),
+                (MH(:center1), 1),
+                (MH(:center2), 1),
+                (MH(:angle1), 1),
+                (MH(:angle2), 1),
+                (MH(), 20)
+            )
+        elseif length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 1
+            return Gibbs(
+                (MH(:ltop1), 1),
+                (MH(:ltop2), 1),
+                (MH(:lwidth1), 1),
+                (MH(:lwidth2), 1),
+                (MH(:rtop1), 1),
+                (MH(:rtop2), 1),
+                (MH(:rwidth1), 1),
+                (MH(:rwidth2), 1),
+                (MH(:center1), 1),
+                (MH(:angle1), 1),
+                (MH(), 10)
+            )
+        elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 2
+            return Gibbs(
+                (MH(:ltop1), 1),
+                (MH(:lwidth1), 1),
+                (MH(:rtop1), 1),
+                (MH(:rwidth1), 1),
+                (MH(:center1), 1),
+                (MH(:angle1), 1),
+                (MH(:center2), 1),
+                (MH(:angle2), 1),
+                (MH(), 20)
+            )
+        elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 1
+            return Gibbs(
+                (MH(:ltop1), 1),
+                (MH(:lwidth1), 1),
+                (MH(:rtop1), 1),
+                (MH(:rwidth1), 1),
+                (MH(:center1), 1),
+                (MH(:angle1), 1),
+                (MH(), 10)
+            )
+        else
+            error("this configuration is not supported ") #TODO
+        end
+    else
+        error("Unknown hypothesis type")
+    end
+end
+
+"""
+    mean log-likelihood of a set of chains. Only considers the likelihood of the last sample
+"""
+logprob(chains::Chains) =
+    logsumexp(chains.value[end, :lp, :]) - log(size(chains.value, 1))
+
+"""
+    loglikelihood(hypothesis, observations, alg, Nsamples, Nchains)
+
+    Compute the log-likelihood of the observations given the model
+"""
+function logprob(h::Hypothesis, observations;alg=default_alg(h), Nsamples, Nchains)
+    m = turing_model(h)
+    mcond = m(observations, h)
+
+    # Run the chains and store the outcomes
+    c = mapreduce(c -> Turing.sample(mcond, alg, Nsamples), chainscat, 1:Nchains)
+    return logprob(c)
+end
+
+"""
+    loglikelihood(hypothesis, observations)
+
+    Compute the log-likelihood under the Max Entropy Hypothesis
+"""
+function logprob(h::MaxEntropyHypothesis, observations)
+    acc_logpdf = 0.0
+    # Compute the log-likelihood of the observations given the model
+    for (pt, obs) in observations
+        acc_logpdf += logpdf(h.thickness_dist, obs.thickness)
+        acc_logpdf += logpdf(h.grade_dist, obs.grade)
+    end
+    return acc_logpdf
+end
+
+"""
+    pull out the points and observations where check evaluates to true
+"""
+function getobs(observations, sym, check=(x) -> true)
+    length(observations) == 0 && return [], []
+
+    pts = collect(keys(observations)) # Pull out the observation pts
+    obs = [v[sym] for v in values(observations)] # Pull out the desired observations
+
+    # Only keep the points that have check evaluated to true
+    keep = [check(x) for x in pts]
+    pts = pts[keep]
+    obs = obs[keep]
+
+    return pts, obs
+end
+
+"""
+    Constructs the model for 2 graben and 2 geochemical domain
+"""
+@model function two_graben_two_geochem(observations, h::Hypothesis, return_samples=false)
+    N = h.N
+    # This defines the grid points (used multiple times below for GP sampling)
+    xs = [[i, j] for i in 1:N, j in 1:N][:]
+
+    # Sample the Graben(s)
+    graben_dist1 = h.grabens[1]
+    ltop1 ~ graben_dist1.left_top
+    lwidth1 ~ graben_dist1.left_width
+    rtop1 ~ graben_dist1.right_top
+    rwidth1 ~ graben_dist1.right_width
+    graben1 = draw_graben(N, ltop1, lwidth1, rtop1, rwidth1)
+
+    graben_dist2 = h.grabens[2]
+    ltop2 ~ graben_dist2.left_top
+    lwidth2 ~ graben_dist2.left_width
+    rtop2 ~ graben_dist2.right_top
+    rwidth2 ~ graben_dist2.right_width
+    graben2 = draw_graben(N, ltop2, lwidth2, rtop2, rwidth2)
+
+    # Construct the thickness model (Note that spatial correlations are shared across domains)
+    μt(x) = begin
+        graben1[x...] == 1.0 && return graben_dist1.μ
+        graben2[x...] == 1.0 && return graben_dist2.μ
+        return h.thickness_background.μ
+    end
+    thicknessGP = GP(μt, h.thickness_background.kernel)
+    if length(observations) > 0
+        pts, obs = getobs(observations, :thickness)
+        thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        thicknessGP = posterior(thicknessGPx, obs)
+    end
+
+    # Sample the geochemical domain
+    geochem_dist1 = h.geochem_domains[1]
+    center1 ~ geochem_dist1.center
+    pts1 = fill(missing, length(geochem_dist1.points))
+    for i in eachindex(pts1)
+        pts1[i] ~ geochem_dist1.points[i]
+    end
+    angle1 ~ geochem_dist1.angle
+    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+
+    geochem_dist2 = h.geochem_domains[2]
+    center2 ~ geochem_dist2.center
+    pts2 = fill(missing, length(geochem_dist2.points))
+    for i in eachindex(pts2)
+        pts2[i] ~ geochem_dist2.points[i]
+    end
+    angle2 ~ geochem_dist2.angle
+    geochem2 = draw_geochemical_domain(N, center2, pts2, angle2)
+
+    # Inside the first geochemical domain model
+    geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
+    ingeochem1(x) = geochem1[x...] == 1.0
+    pts, obs = getobs(observations, :grade, ingeochem1)
+    if length(obs) > 0
+        geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        geochemGP1 = posterior(geochemGP1x, obs)
+    end
+
+    # Inside the second geochemical domain model
+    geochemGP2 = GP((x) -> geochem_dist2.μ, geochem_dist2.kernel)
+    ingeochem2(x) = geochem2[x...] == 1.0
+    pts, obs = getobs(observations, :grade, ingeochem2)
+    if length(obs) > 0
+        geochemGP2x = geochemGP2(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(geochemGP2x, obs) # Adds the loglikelihood
+        geochemGP2 = posterior(geochemGP2x, obs)
+    end
+
+    # Background model and sample
+    backgroundGradeGP = GP((x) -> h.grade_background.μ, h.grade_background.kernel)
+    inbackground(x) = !(geochem1[x...] == 1.0) && !(geochem2[x...] == 1.0)
+    pts, obs = getobs(observations, :grade, inbackground)
+    if length(obs) > 0
+        backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        backgroundGradeGP = posterior(backgroundGradeGPx, obs)
+    end
+
+    if return_samples
+        # Create the structural domain
+        structural_fn(x) = begin
+            graben1[x...] == 1.0 && return 1.0
+            graben2[x...] == 1.0 && return 2.0
+            return 0.0
+        end
+        structural = reshape(structural_fn.(xs), N, N)
+
+        # Sample the thickness
+        thickness = reshape(rand(thicknessGP(xs, h.σ_thickness)), N, N)
+
+        # Construct the geochemical domain
+        ibackground = [inbackground(x) for x in xs]
+        igeochem1 = [ingeochem1(x) for x in xs]
+        igeochem2 = [ingeochem2(x) for x in xs]
+        geochemdomain = zeros(N, N)
+        geochemdomain[igeochem1] .= 1.0
+        geochemdomain[igeochem2] .= 2.0
+
+        g_geochem1 = rand(geochemGP1(xs[igeochem1], h.σ_grade))
+        g_geochem2 = rand(geochemGP2(xs[igeochem2], h.σ_grade))
+        g_background = rand(backgroundGradeGP(xs[ibackground], h.σ_grade))
+
+        # Compose the grade observation
+        grade = zeros(N, N)[:]
+        grade[igeochem1] .= g_geochem1
+        grade[igeochem2] .= g_geochem2
+        grade[ibackground] .= g_background
+        grade = reshape(grade, N, N)
+
+        return (; structural, geochemdomain, thickness, grade)
+    end
+end
+
+"""
+    Constructs the model for 2 graben and 1 geochemical domain
+"""
+@model function two_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
+    N = h.N
+    # This defines the grid points (used multiple times below for GP sampling)
+    xs = [[i, j] for i in 1:N, j in 1:N][:]
+
+    # Sample the Graben(s)
+    graben_dist1 = h.grabens[1]
+    ltop1 ~ graben_dist1.left_top
+    lwidth1 ~ graben_dist1.left_width
+    rtop1 ~ graben_dist1.right_top
+    rwidth1 ~ graben_dist1.right_width
+    graben1 = draw_graben(N, ltop1, lwidth1, rtop1, rwidth1)
+
+    graben_dist2 = h.grabens[2]
+    ltop2 ~ graben_dist2.left_top
+    lwidth2 ~ graben_dist2.left_width
+    rtop2 ~ graben_dist2.right_top
+    rwidth2 ~ graben_dist2.right_width
+    graben2 = draw_graben(N, ltop2, lwidth2, rtop2, rwidth2)
+
+    # Construct the thickness model (Note that spatial correlations are shared across domains)
+    μt(x) = begin
+        graben1[x...] == 1.0 && return graben_dist1.μ
+        graben2[x...] == 1.0 && return graben_dist2.μ
+        return h.thickness_background.μ
+    end
+    thicknessGP = GP(μt, h.thickness_background.kernel)
+    if length(observations) > 0
+        pts, obs = getobs(observations, :thickness)
+        thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        thicknessGP = posterior(thicknessGPx, obs)
+    end
+
+    # Sample the geochemical domain
+    geochem_dist1 = h.geochem_domains[1]
+    center1 ~ geochem_dist1.center
+    pts1 = fill(missing, length(geochem_dist1.points))
+    for i in eachindex(pts1)
+        pts1[i] ~ geochem_dist1.points[i]
+    end
+    angle1 ~ geochem_dist1.angle
+    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+
+    # Inside the first geochemical domain model
+    geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
+    ingeochem1(x) = geochem1[x...] == 1.0
+    pts, obs = getobs(observations, :grade, ingeochem1)
+    if length(obs) > 0
+        geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        geochemGP1 = posterior(geochemGP1x, obs)
+    end
+
+    # Background model and sample
+    backgroundGradeGP = GP((x) -> h.grade_background.μ, h.grade_background.kernel)
+    inbackground(x) = !(geochem1[x...] == 1.0)
+    pts, obs = getobs(observations, :grade, inbackground)
+    if length(obs) > 0
+        backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        backgroundGradeGP = posterior(backgroundGradeGPx, obs)
+    end
+
+    if return_samples
+        # Create the structural domain
+        structural_fn(x) = begin
+            graben1[x...] == 1.0 && return 1.0
+            graben2[x...] == 1.0 && return 2.0
+            return 0.0
+        end
+        structural = reshape(structural_fn.(xs), N, N)
+
+        # Sample the thickness
+        thickness = reshape(rand(thicknessGP(xs, h.σ_thickness)), N, N)
+
+        # Construct the geochemical domain
+        ibackground = [inbackground(x) for x in xs]
+        igeochem1 = [ingeochem1(x) for x in xs]
+        geochemdomain = zeros(N, N)
+        geochemdomain[igeochem1] .= 1.0
+
+        g_geochem1 = rand(geochemGP1(xs[igeochem1], h.σ_grade))
+        g_background = rand(backgroundGradeGP(xs[ibackground], h.σ_grade))
+
+        # Compose the grade observation
+        grade = zeros(N, N)[:]
+        grade[igeochem1] .= g_geochem1
+        grade[ibackground] .= g_background
+        grade = reshape(grade, N, N)
+
+        return (; structural, geochemdomain, thickness, grade)
+    end
+end
+
+"""
+    Constructs the model for 1 graben and 2 geochemical domain
+"""
+@model function one_graben_two_geochem(observations, h::Hypothesis, return_samples=false)
+    N = h.N
+    # This defines the grid points (used multiple times below for GP sampling)
+    xs = [[i, j] for i in 1:N, j in 1:N][:]
+
+    # Sample the Graben(s)
+    graben_dist1 = h.grabens[1]
+    ltop1 ~ graben_dist1.left_top
+    lwidth1 ~ graben_dist1.left_width
+    rtop1 ~ graben_dist1.right_top
+    rwidth1 ~ graben_dist1.right_width
+    graben1 = draw_graben(N, ltop1, lwidth1, rtop1, rwidth1)
+
+    # Construct the thickness model (Note that spatial correlations are shared across domains)
+    μt(x) = begin
+        graben1[x...] == 1.0 && return graben_dist1.μ
+        return h.thickness_background.μ
+    end
+    thicknessGP = GP(μt, h.thickness_background.kernel)
+    if length(observations) > 0
+        pts, obs = getobs(observations, :thickness)
+        thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        thicknessGP = posterior(thicknessGPx, obs)
+    end
+
+    # Sample the geochemical domain
+    geochem_dist1 = h.geochem_domains[1]
+    center1 ~ geochem_dist1.center
+    pts1 = fill(missing, length(geochem_dist1.points))
+    for i in eachindex(pts1)
+        pts1[i] ~ geochem_dist1.points[i]
+    end
+    angle1 ~ geochem_dist1.angle
+    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+
+    geochem_dist2 = h.geochem_domains[2]
+    center2 ~ geochem_dist2.center
+    pts2 = fill(missing, length(geochem_dist2.points))
+    for i in eachindex(pts2)
+        pts2[i] ~ geochem_dist2.points[i]
+    end
+    angle2 ~ geochem_dist2.angle
+    geochem2 = draw_geochemical_domain(N, center2, pts2, angle2)
+
+    # Inside the first geochemical domain model
+    geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
+    ingeochem1(x) = geochem1[x...] == 1.0
+    pts, obs = getobs(observations, :grade, ingeochem1)
+    if length(obs) > 0
+        geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        geochemGP1 = posterior(geochemGP1x, obs)
+    end
+
+    # Inside the second geochemical domain model
+    geochemGP2 = GP((x) -> geochem_dist2.μ, geochem_dist2.kernel)
+    ingeochem2(x) = geochem2[x...] == 1.0
+    pts, obs = getobs(observations, :grade, ingeochem2)
+    if length(obs) > 0
+        geochemGP2x = geochemGP2(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(geochemGP2x, obs) # Adds the loglikelihood
+        geochemGP2 = posterior(geochemGP2x, obs)
+    end
+
+    # Background model and sample
+    backgroundGradeGP = GP((x) -> h.grade_background.μ, h.grade_background.kernel)
+    inbackground(x) = !(geochem1[x...] == 1.0) && !(geochem2[x...] == 1.0)
+    pts, obs = getobs(observations, :grade, inbackground)
+    if length(obs) > 0
+        backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        backgroundGradeGP = posterior(backgroundGradeGPx, obs)
+    end
+
+    if return_samples
+        # Create the structural domain
+        structural_fn(x) = begin
+            graben1[x...] == 1.0 && return 1.0
+            return 0.0
+        end
+        structural = reshape(structural_fn.(xs), N, N)
+
+        # Sample the thickness
+        thickness = reshape(rand(thicknessGP(xs, h.σ_thickness)), N, N)
+
+        # Construct the geochemical domain
+        ibackground = [inbackground(x) for x in xs]
+        igeochem1 = [ingeochem1(x) for x in xs]
+        igeochem2 = [ingeochem2(x) for x in xs]
+        geochemdomain = zeros(N, N)
+        geochemdomain[igeochem1] .= 1.0
+        geochemdomain[igeochem2] .= 2.0
+
+        g_geochem1 = rand(geochemGP1(xs[igeochem1], h.σ_grade))
+        g_geochem2 = rand(geochemGP2(xs[igeochem2], h.σ_grade))
+        g_background = rand(backgroundGradeGP(xs[ibackground], h.σ_grade))
+
+        # Compose the grade observation
+        grade = zeros(N, N)[:]
+        grade[igeochem1] .= g_geochem1
+        grade[igeochem2] .= g_geochem2
+        grade[ibackground] .= g_background
+        grade = reshape(grade, N, N)
+
+        return (; structural, geochemdomain, thickness, grade)
+    end
+end
 
 """
     Constructs the model for 1 graben and 1 geochemical domain
@@ -26,87 +496,85 @@ loglikelihood(chains::Chains) = logsumexp(chains.value[end, :lp, :])
 @model function one_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
     N = h.N
     # This defines the grid points (used multiple times below for GP sampling)
-    x = hcat([[i, j] for i in 1:N, j in 1:N][:]...)
+    xs = [[i, j] for i in 1:N, j in 1:N][:]
 
-    # Sample the Graben
-    graben_dist = h.grabens[1]
-    ltop ~ graben_dist.left_top
-    lwidth ~ graben_dist.left_width
-    rtop ~ graben_dist.right_top
-    rwidth ~ graben_dist.right_width
-    graben = draw_graben(N, ltop, lwidth, rtop, rwidth)
+    # Sample the Graben(s)
+    graben_dist1 = h.grabens[1]
+    ltop1 ~ graben_dist1.left_top
+    lwidth1 ~ graben_dist1.left_width
+    rtop1 ~ graben_dist1.right_top
+    rwidth1 ~ graben_dist1.right_width
+    graben1 = draw_graben(N, ltop1, lwidth1, rtop1, rwidth1)
 
-    # Construct the thickness model
-    μt(x) = graben[x...] == 1.0 ? graben_dist.μ : h.thickness_background.μ
+    # Construct the thickness model (Note that spatial correlations are shared across domains)
+    μt(x) = begin
+        graben1[x...] == 1.0 && return graben_dist1.μ
+        return h.thickness_background.μ
+    end
     thicknessGP = GP(μt, h.thickness_background.kernel)
     if length(observations) > 0
-        pts = collect(keys(observations)) # Pull out the observation pts
-        obs = [v.thickness for v in values(observations)] # Pull out the thickness observations
-        fx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
-        Turing.@addlogprob! logpdf(fx, obs) # Adds the loglikelihood
-        thicknessGP = posterior(fx, obs) # Creates the posterior disribution
-    end
-    # Now sample our GP to get the thickness distribution at all points
-    if return_samples
-        thickness = reshape(rand(thicknessGP(x, h.σ_thickness)), N, N)
+        pts, obs = getobs(observations, :thickness)
+        thicknessGPx = thicknessGP(pts, h.σ_thickness) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(thicknessGPx, obs) # Adds the loglikelihood
+        thicknessGP = posterior(thicknessGPx, obs)
     end
 
     # Sample the geochemical domain
-    center ~ h.geochem_domains[1].center
-    pts = fill(missing, length(h.geochem_domains[1].points))
-    for i in eachindex(pts)
-        pts[i] ~ h.geochem_domains[1].points[i]
+    geochem_dist1 = h.geochem_domains[1]
+    center1 ~ geochem_dist1.center
+    pts1 = fill(missing, length(geochem_dist1.points))
+    for i in eachindex(pts1)
+        pts1[i] ~ geochem_dist1.points[i]
     end
-    angle ~ h.geochem_domains[1].angle
-    geochem = draw_geochemical_domain(N, center, pts, angle)
+    angle1 ~ geochem_dist1.angle
+    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+
+    # Inside the first geochemical domain model
+    geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
+    ingeochem1(x) = geochem1[x...] == 1.0
+    pts, obs = getobs(observations, :grade, ingeochem1)
+    if length(obs) > 0
+        geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(geochemGP1x, obs) # Adds the loglikelihood
+        geochemGP1 = posterior(geochemGP1x, obs)
+    end
 
     # Background model and sample
     backgroundGradeGP = GP((x) -> h.grade_background.μ, h.grade_background.kernel)
-    if length(observations) > 0
-        pts = collect(keys(observations)) # Pull out the observation pts
-        obs = [v.grade for v in values(observations)] # Pull out the grade observations
-
-        # Only keep the points that are in the background domain
-        keep = [geochem[x...] == 0.0 for x in pts]
-        pts = pts[keep]
-        obs = obs[keep]
-
-        if length(pts) > 0
-            fx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
-            Turing.@addlogprob! logpdf(fx, obs) # Adds the loglikelihood
-            backgroundGradeGP = posterior(fx, obs) # Creates the posterior disribution
-        end
+    inbackground(x) = !(geochem1[x...] == 1.0)
+    pts, obs = getobs(observations, :grade, inbackground)
+    if length(obs) > 0
+        backgroundGradeGPx = backgroundGradeGP(pts, h.σ_grade) # Conditions the GP on the observation points
+        Turing.@addlogprob! logpdf(backgroundGradeGPx, obs) # Adds the loglikelihood
+        backgroundGradeGP = posterior(backgroundGradeGPx, obs)
     end
+
     if return_samples
-        g_background = reshape(rand(backgroundGradeGP(x, h.σ_grade)), N, N)
-    end
-
-    # Inside geochemical domain model and sample
-    geochem_dist = h.geochem_domains[1]
-    geochemGP = GP((x) -> geochem_dist.μ, geochem_dist.kernel)
-    if length(observations) > 0
-        pts = collect(keys(observations)) # Pull out the observation pts
-        obs = [v.grade for v in values(observations)] # Pull out the grade observations
-
-        # Only keep the points that are in the geochem domain
-        keep = [geochem[x...] == 1.0 for x in pts]
-        pts = pts[keep]
-        obs = obs[keep]
-
-        if length(pts) > 0
-            fx = geochemGP(pts, h.σ_grade) # Conditions the GP on the observation points
-            Turing.@addlogprob! logpdf(fx, obs) # Adds the loglikelihood
-            geochemGP = posterior(fx, obs) # Creates the posterior disribution
+        # Create the structural domain
+        structural_fn(x) = begin
+            graben1[x...] == 1.0 && return 1.0
+            return 0.0
         end
-    end
-    if return_samples
-        g_geochem = reshape(rand(geochemGP(x, h.σ_grade)), N, N)
+        structural = reshape(structural_fn.(xs), N, N)
+
+        # Sample the thickness
+        thickness = reshape(rand(thicknessGP(xs, h.σ_thickness)), N, N)
+
+        # Construct the geochemical domain
+        ibackground = [inbackground(x) for x in xs]
+        igeochem1 = [ingeochem1(x) for x in xs]
+        geochemdomain = zeros(N, N)
+        geochemdomain[igeochem1] .= 1.0
+
+        g_geochem1 = rand(geochemGP1(xs[igeochem1], h.σ_grade))
+        g_background = rand(backgroundGradeGP(xs[ibackground], h.σ_grade))
 
         # Compose the grade observation
-        grade = g_background .* (1.0 .- geochem) .+ g_geochem .* geochem
+        grade = zeros(N, N)[:]
+        grade[igeochem1] .= g_geochem1
+        grade[ibackground] .= g_background
+        grade = reshape(grade, N, N)
 
-        # mineralization
-        mineralization = grade .* thickness
-        return (; graben, geochem, thickness, grade, mineralization)
+        return (; structural, geochemdomain, thickness, grade)
     end
 end

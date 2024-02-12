@@ -13,6 +13,7 @@ using Plots
 using LogExpFunctions
 using POMDPs
 using POMDPTools
+using ParticleFilters
 
 include("domains.jl")
 export ThicknessBackground, GradeBackground
@@ -20,15 +21,19 @@ export GeochemicalDomainDistribution, draw_geochemical_domain
 export GrabenDistribution, draw_graben
 
 include("hypotheses.jl")
-export Hypothesis, one_graben_one_geochem, loglikelihood
-
-include("visualization.jl")
-export plot_model
+export Hypothesis, MaxEntropyHypothesis, turing_model, default_alg, logprob
+export one_graben_one_geochem
+export one_graben_two_geochem
+export two_graben_one_geochem
+export two_graben_two_geochem
 
 include("pomdp.jl")
 export HierarchicalMinExPOMDP, HierarchicalMinExState
 
 include("beliefs.jl")
-export turing_model, particle_collection
+export MCMCUpdater
+
+include("visualization.jl")
+export plot_model, plot_state
 
 end # module HierarchicalMineralExploration
