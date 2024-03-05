@@ -7,15 +7,6 @@ using AbstractGPs
 ## Setup mineral system models
 include("setup.jl")
 
-## Build out various hypotheses
-hypotheses = [
-    Hypothesis(N, t₀, σₜ, grabens, γ₀, σᵧ, geochem_domains), # Two grabens, two geochem domains
-    Hypothesis(N, t₀, σₜ, grabens, γ₀, σᵧ, [geochem_domains[1]]), # Two grabens, single geochem domain
-    Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, geochem_domains), # Single graben, two geochem domains
-    Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, [geochem_domains[1]]), # Single graben, single geochem domain
-]
-max_ent_hypothesis = MaxEntropyHypothesis(Normal(6, 7), Normal(10,10))
-
 ## Create some plots of the various hypotheses
 sample1 = turing_model(hypotheses[1])(Dict(), hypotheses[1], true)()
 plot_model(; sample1...)

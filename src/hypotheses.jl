@@ -49,39 +49,187 @@ function default_alg(hypothesis)
     if hypothesis isa Hypothesis
         if length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 2
             return Gibbs(
-                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
-                (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 4),
-                (MH(:center1), 1),
-                (MH(:angle1), 1),
-                (MH(:pts1), 1),
-                (MH(:center2), 1),
-                (MH(:angle2), 1),
-                (MH(:pts2), 1),
+                (MH(), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
+                (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 1),
+                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
+                (MH(:cx2, :cy2, :r12, :r22, :r32, :r42, :r52, :r62, :r72, :r82, :r92, :r102), 1),
+                (
+                    MH(
+                        :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rtop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :lwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :ltop2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rtop2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :lwidth2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rwidth2 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :cx1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :cy1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r11 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r21 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r31 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r41 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r51 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r61 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r71 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r81 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r91 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r101 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1
+                ),
+                (
+                    MH(
+                        :cx2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :cy2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r12 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r22 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r32 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r42 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r52 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r62 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r72 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r82 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r92 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r102 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1
+                ),
             )
         elseif length(hypothesis.grabens) == 2 && length(hypothesis.geochem_domains) == 1
             return Gibbs(
-                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
-                (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 4),
-                (MH(:center1), 1),
-                (MH(:angle1), 1),
-                (MH(:pts1), 1)
+                (MH(), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
+                (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 1),
+                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
+                (
+                    MH(
+                        :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rtop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :lwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :ltop2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rtop2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :lwidth2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rwidth2 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :cx1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :cy1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r11 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r21 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r31 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r41 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r51 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r61 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r71 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r81 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r91 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r101 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1
+                )
             )
         elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 2
             return Gibbs(
-                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
-                (MH(:center1), 1),
-                (MH(:angle1), 1),
-                (MH(:center2), 1),
-                (MH(:angle2), 1),
-                (MH(:pts1), 1),
-                (MH(:pts2), 1),
+                (MH(), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
+                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
+                (MH(:cx2, :cy2, :r12, :r22, :r32, :r42, :r52, :r62, :r72, :r82, :r92, :r102), 1),
+                (
+                    MH(
+                        :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rtop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :lwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :cx1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :cy1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r11 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r21 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r31 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r41 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r51 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r61 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r71 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r81 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r91 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r101 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1
+                ),
+                (
+                    MH(
+                        :cx2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :cy2 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r12 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r22 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r32 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r42 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r52 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r62 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r72 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r82 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r92 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r102 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1
+                ),
             )
         elseif length(hypothesis.grabens) == 1 && length(hypothesis.geochem_domains) == 1
             return Gibbs(
-                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 4),
-                (MH(:center1), 1),
-                (MH(:angle1), 1),
-                (MH(:pts1), 1)
+                (MH(), 1),
+                (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
+                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
+                (
+                    MH(
+                        :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rtop1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :lwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :rwidth1 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :cx1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :cy1 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r11 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r21 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r31 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r41 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r51 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r61 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r71 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r81 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r91 => AdvancedMH.RandomWalkProposal(Normal()),
+                        :r101 => AdvancedMH.RandomWalkProposal(Normal()),
+                    ),
+                    1
+                ),
             )
         else
             error("this configuration is not supported ") #TODO
@@ -91,20 +239,20 @@ function default_alg(hypothesis)
     end
 end
 
-"""
-    loglikelihood(hypothesis, observations, alg, Nsamples, Nchains)
+# """
+#     loglikelihood(hypothesis, observations, alg, Nsamples, Nchains)
 
-    Compute the log-likelihood of the observations given the model
-"""
-function logprob(h::Hypothesis, observations;alg=default_alg(h), Nsamples, Nchains)
-    m = turing_model(h)
-    mcond = m(observations, h)
+#     Compute the log-likelihood of the observations given the model
+# """
+# function logprob(h::Hypothesis, observations;alg=default_alg(h), Nsamples, Nchains)
+#     m = turing_model(h)
+#     mcond = m(observations, h)
 
-    # Run the chains and store the outcomes
-    c = mapreduce(c -> Turing.sample(mcond, alg, Nsamples), chainscat, 1:Nchains)
-    outputs = generated_quantities(mcond, c[end, :, :]) # NOTE: this is an overestimate by just computing p(o | d)
-    return maximum(outputs) # NOTE: this is an overestimate by taking the max
-end
+#     # Run the chains and store the outcomes
+#     c = mapreduce(c -> Turing.sample(mcond, alg, Nsamples), chainscat, 1:Nchains)
+#     outputs = generated_quantities(mcond, c[end, :, :]) # NOTE: this is an overestimate by just computing p(o | d)
+#     return maximum(outputs) # NOTE: this is an overestimate by taking the max
+# end
 
 """
     loglikelihood(hypothesis, observations)
@@ -138,9 +286,6 @@ function getobs(observations, sym, check=(x) -> true)
     return pts, obs
 end
 
-"""
-    Constructs the model for 2 graben and 2 geochemical domain
-"""
 @model function two_graben_two_geochem(observations, h::Hypothesis, return_samples=false)
     marginal_loglikelihood = 0.0
 
@@ -181,22 +326,40 @@ end
 
     # Sample the geochemical domain
     geochem_dist1 = h.geochem_domains[1]
-    center1 ~ geochem_dist1.center
-    pts1 = fill(missing, length(geochem_dist1.points))
-    for i in eachindex(pts1)
-        pts1[i] ~ geochem_dist1.points[i]
-    end
+    cx1 ~ geochem_dist1.cx
+    cy1 ~ geochem_dist1.cy
+    r11 ~ geochem_dist1.r1
+    r21 ~ geochem_dist1.r2
+    r31 ~ geochem_dist1.r3
+    r41 ~ geochem_dist1.r4
+    r51 ~ geochem_dist1.r5
+    r61 ~ geochem_dist1.r6
+    r71 ~ geochem_dist1.r7
+    r81 ~ geochem_dist1.r8
+    r91 ~ geochem_dist1.r9
+    r101 ~ geochem_dist1.r10
     angle1 ~ geochem_dist1.angle
-    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+    center1 = (cx1, cy1)
+    rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
+    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
 
     geochem_dist2 = h.geochem_domains[2]
-    center2 ~ geochem_dist2.center
-    pts2 = fill(missing, length(geochem_dist2.points))
-    for i in eachindex(pts2)
-        pts2[i] ~ geochem_dist2.points[i]
-    end
+    cx2 ~ geochem_dist2.cx
+    cy2 ~ geochem_dist2.cy
+    r12 ~ geochem_dist2.r1
+    r22 ~ geochem_dist2.r2
+    r32 ~ geochem_dist2.r3
+    r42 ~ geochem_dist2.r4
+    r52 ~ geochem_dist2.r5
+    r62 ~ geochem_dist2.r6
+    r72 ~ geochem_dist2.r7
+    r82 ~ geochem_dist2.r8
+    r92 ~ geochem_dist2.r9
+    r102 ~ geochem_dist2.r10
     angle2 ~ geochem_dist2.angle
-    geochem2 = draw_geochemical_domain(N, center2, pts2, angle2)
+    center2 = (cx2, cy2)
+    rs2 = [r12, r22, r32, r42, r52, r62, r72, r82, r92, r102]
+    geochem2 = draw_geochemical_domain(N, center2, rs2, angle2)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
@@ -270,9 +433,6 @@ end
     return marginal_loglikelihood
 end
 
-"""
-    Constructs the model for 2 graben and 1 geochemical domain
-"""
 @model function two_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
     marginal_loglikelihood = 0.0
     N = h.N
@@ -312,13 +472,22 @@ end
 
     # Sample the geochemical domain
     geochem_dist1 = h.geochem_domains[1]
-    center1 ~ geochem_dist1.center
-    pts1 = fill(missing, length(geochem_dist1.points))
-    for i in eachindex(pts1)
-        pts1[i] ~ geochem_dist1.points[i]
-    end
+    cx1 ~ geochem_dist1.cx
+    cy1 ~ geochem_dist1.cy
+    r11 ~ geochem_dist1.r1
+    r21 ~ geochem_dist1.r2
+    r31 ~ geochem_dist1.r3
+    r41 ~ geochem_dist1.r4
+    r51 ~ geochem_dist1.r5
+    r61 ~ geochem_dist1.r6
+    r71 ~ geochem_dist1.r7
+    r81 ~ geochem_dist1.r8
+    r91 ~ geochem_dist1.r9
+    r101 ~ geochem_dist1.r10
     angle1 ~ geochem_dist1.angle
-    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+    center1 = (cx1, cy1)
+    rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
+    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
@@ -376,9 +545,6 @@ end
     return marginal_loglikelihood
 end
 
-"""
-    Constructs the model for 1 graben and 2 geochemical domain
-"""
 @model function one_graben_two_geochem(observations, h::Hypothesis, return_samples=false)
     marginal_loglikelihood = 0.0
     N = h.N
@@ -410,22 +576,40 @@ end
 
     # Sample the geochemical domain
     geochem_dist1 = h.geochem_domains[1]
-    center1 ~ geochem_dist1.center
-    pts1 = fill(missing, length(geochem_dist1.points))
-    for i in eachindex(pts1)
-        pts1[i] ~ geochem_dist1.points[i]
-    end
+    cx1 ~ geochem_dist1.cx
+    cy1 ~ geochem_dist1.cy
+    r11 ~ geochem_dist1.r1
+    r21 ~ geochem_dist1.r2
+    r31 ~ geochem_dist1.r3
+    r41 ~ geochem_dist1.r4
+    r51 ~ geochem_dist1.r5
+    r61 ~ geochem_dist1.r6
+    r71 ~ geochem_dist1.r7
+    r81 ~ geochem_dist1.r8
+    r91 ~ geochem_dist1.r9
+    r101 ~ geochem_dist1.r10
     angle1 ~ geochem_dist1.angle
-    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+    center1 = (cx1, cy1)
+    rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
+    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
 
     geochem_dist2 = h.geochem_domains[2]
-    center2 ~ geochem_dist2.center
-    pts2 = fill(missing, length(geochem_dist2.points))
-    for i in eachindex(pts2)
-        pts2[i] ~ geochem_dist2.points[i]
-    end
+    cx2 ~ geochem_dist2.cx
+    cy2 ~ geochem_dist2.cy
+    r12 ~ geochem_dist2.r1
+    r22 ~ geochem_dist2.r2
+    r32 ~ geochem_dist2.r3
+    r42 ~ geochem_dist2.r4
+    r52 ~ geochem_dist2.r5
+    r62 ~ geochem_dist2.r6
+    r72 ~ geochem_dist2.r7
+    r82 ~ geochem_dist2.r8
+    r92 ~ geochem_dist2.r9
+    r102 ~ geochem_dist2.r10
     angle2 ~ geochem_dist2.angle
-    geochem2 = draw_geochemical_domain(N, center2, pts2, angle2)
+    center2 = (cx2, cy2)
+    rs2 = [r12, r22, r32, r42, r52, r62, r72, r82, r92, r102]
+    geochem2 = draw_geochemical_domain(N, center2, rs2, angle2)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
@@ -498,9 +682,6 @@ end
     return marginal_loglikelihood
 end
 
-"""
-    Constructs the model for 1 graben and 1 geochemical domain
-"""
 @model function one_graben_one_geochem(observations, h::Hypothesis, return_samples=false)
     marginal_loglikelihood = 0.0
     N = h.N
@@ -532,13 +713,22 @@ end
 
     # Sample the geochemical domain
     geochem_dist1 = h.geochem_domains[1]
-    center1 ~ geochem_dist1.center
-    pts1 = fill(missing, length(geochem_dist1.points))
-    for i in eachindex(pts1)
-        pts1[i] ~ geochem_dist1.points[i]
-    end
+    cx1 ~ geochem_dist1.cx
+    cy1 ~ geochem_dist1.cy
+    r11 ~ geochem_dist1.r1
+    r21 ~ geochem_dist1.r2
+    r31 ~ geochem_dist1.r3
+    r41 ~ geochem_dist1.r4
+    r51 ~ geochem_dist1.r5
+    r61 ~ geochem_dist1.r6
+    r71 ~ geochem_dist1.r7
+    r81 ~ geochem_dist1.r8
+    r91 ~ geochem_dist1.r9
+    r101 ~ geochem_dist1.r10
     angle1 ~ geochem_dist1.angle
-    geochem1 = draw_geochemical_domain(N, center1, pts1, angle1)
+    center1 = (cx1, cy1)
+    rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
+    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)

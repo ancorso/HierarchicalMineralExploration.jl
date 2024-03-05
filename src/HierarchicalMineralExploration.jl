@@ -7,15 +7,17 @@ using Parameters
 using Distributions
 using Random
 using Turing
+using AdvancedMH
 using Memoization
 using LazySets
 using AbstractGPs
-using Plots
+using Plots; default(fontfamily="Computer Modern", framestyle=:box)
 using LogExpFunctions
 using POMDPs
 using POMDPTools
 using ParticleFilters
 using StatsBase
+using Meshes
 
 include("domains.jl")
 export ThicknessBackground, GradeBackground
@@ -30,12 +32,12 @@ export two_graben_one_geochem
 export two_graben_two_geochem
 
 include("pomdp.jl")
-export HierarchicalMinExPOMDP, HierarchicalMinExState
+export HierarchicalMinExPOMDP, HierarchicalMinExState, extraction_reward
 
 include("beliefs.jl")
-export MCMCUpdater
+export MCMCUpdater, hypothesis_loglikelihoods
 
 include("visualization.jl")
-export plot_model, plot_state
+export plot_model, plot_state, plot_mineralization, plot_belief, plot_step
 
 end # module HierarchicalMineralExploration

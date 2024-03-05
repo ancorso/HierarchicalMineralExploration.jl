@@ -4,10 +4,6 @@ State of a hierarchical mineral exploration problem
 mutable struct HierarchicalMinExState
     thickness::Matrix{Float32}
     grade::Matrix{Float32}
-    drill_locations::Vector{Tuple{Int,Int}}
-    function HierarchicalMinExState(thickness, grade, drill_locations=[])
-        return new(thickness, grade, drill_locations)
-    end
 end
 
 # Ensure HierarchicalMinExState can be compared when adding to a dictionary
@@ -22,7 +18,7 @@ Base.:(==)(s1::HierarchicalMinExState, s2::HierarchicalMinExState) = isequal(s1,
 const TERMINAL_LOCATION = (-1, -1)
 
 ## Definition of the POMDP
-@with_kw struct HierarchicalMinExPOMDP <: POMDP{HierarchicalMinExState,Any,Any}
+@with_kw struct HierarchicalMinExPOMDP <: POMDP{Any,Any,Any}
     grid_dims = (32, 32)
     grade_threshold = 10.0
     extraction_cost = 400 # this is an eyball from 100 samples
@@ -35,43 +31,17 @@ const TERMINAL_LOCATION = (-1, -1)
 end
 
 POMDPs.discount(m::HierarchicalMinExPOMDP) = m.γ
-function POMDPs.isterminal(m::HierarchicalMinExPOMDP, s)
-    return any(loc -> loc == TERMINAL_LOCATION, s.drill_locations)
-end
-undrilled_locations(m::HierarchicalMinExPOMDP, b) = undrilled_locations(m, rand(b))
-function undrilled_locations(m::HierarchicalMinExPOMDP, s::HierarchicalMinExState)
-    return setdiff(m.drill_locations, s.drill_locations)
-end
-function POMDPs.actions(m::HierarchicalMinExPOMDP, s_or_b)
-    return [m.terminal_actions..., undrilled_locations(m, s_or_b)...]
-end
+POMDPs.isterminal(m::HierarchicalMinExPOMDP, s) = s == :terminal
 POMDPs.actions(m::HierarchicalMinExPOMDP) = [m.terminal_actions..., m.drill_locations...]
-
-function calc_massive(m::HierarchicalMinExPOMDP, s::HierarchicalMinExState)
+POMDPs.actionindex(m::HierarchicalMinExPOMDP, a) = findfirst([a] .== actions(m))
+function calc_massive(m::HierarchicalMinExPOMDP, s)
     return sum(s.thickness .* (s.grade .> m.grade_threshold))
 end
-function extraction_reward(m::HierarchicalMinExPOMDP, s::HierarchicalMinExState)
+function extraction_reward(m::HierarchicalMinExPOMDP, s)
     return calc_massive(m, s) - m.extraction_cost
 end
 function calibrate_extraction_cost(m::HierarchicalMinExPOMDP, ds0)
     return mean(calc_massive(m, s) for s in ds0)
-end
-# ^ Note: Change extraction cost so state distribution is centered around 0.
-
-# This gen function is for passing multiple drilling actions
-function POMDPs.gen(
-    m::HierarchicalMinExPOMDP, s, as::Vector{Tuple{Int,Int}}, rng=Random.GLOBAL_RNG
-)
-    sp = deepcopy(s)
-    rtot = 0
-    os = Float64[]
-    for a in as
-        push!(sp.drill_locations, a)
-        _, o, r = gen(m, s, a, rng)
-        push!(os, o)
-        rtot += r
-    end
-    return (; sp, o=os, r=rtot)
 end
 
 function POMDPs.reward(m::HierarchicalMinExPOMDP, s, a)
@@ -87,51 +57,46 @@ end
 
 function POMDPs.observation(m::HierarchicalMinExPOMDP, a, s)
     if isterminal(m, s) || a in m.terminal_actions
-        o = (thickness=-Inf32, grade=-Inf32)
+        o = SparseCat([nothing], [1.0])
     else
-        o = (thickness=s.thickness[a...], grade=s.grade[a...])
+        o = product_distribution(
+            Normal(s.thickness[a...], m.σ_thickness), Normal(s.grade[a...], m.σ_grade)
+        )
     end
     return o
 end
 
 function POMDPs.gen(m::HierarchicalMinExPOMDP, s, a, rng=Random.GLOBAL_RNG)
     # Compute the next state
-    sp = deepcopy(s)
+    sp = (a in m.terminal_actions || isterminal(m, s)) ? :terminal : s #copy(s)
 
     # Compute the reward
     r = reward(m, s, a)
-    if r == -m.drill_cost
-        push!(sp.drill_locations, a)
-    end
 
     # observation
-    o = observation(m, a, s)
-
-    if (a in m.terminal_actions || isterminal(m, s))
-        push!(sp.drill_locations, TERMINAL_LOCATION)
-    end
+    o = rand(observation(m, a, s))
 
     return (; sp, o, r)
 end
 
 # Function for handling vector of actions (and therefore vector of observations)
-function POMDPTools.obs_weight(
-    m::HierarchicalMinExPOMDP, s, a::Vector{Tuple{Int64,Int64}}, sp, o::Vector{Float64}
-)
-    w = 1.0
-    for (a_i, o_i) in zip(a, o)
-        w *= obs_weight(m, s, a_i, sp, o_i)
-    end
-    return w
-end
+# function POMDPTools.obs_weight(
+#     m::HierarchicalMinExPOMDP, s, a::Vector{Tuple{Int64,Int64}}, sp, o::Vector{Float64}
+# )
+#     w = 1.0
+#     for (a_i, o_i) in zip(a, o)
+#         w *= obs_weight(m, s, a_i, sp, o_i)
+#     end
+#     return w
+# end
 
-function POMDPTools.obs_weight(m::HierarchicalMinExPOMDP, s, a, sp, o)
-    if (isterminal(m, s) || a in m.terminal_actions)
-        w = Float64(isinf(o.thickness))
-    else
-        w =
-            pdf(Normal(s.thickness[a...], m.σ_thickness), o.thickness) *
-            pdf(Normal(s.grade[a...], m.σ_grade), o.grade)
-    end
-    return w
-end
+# function POMDPTools.obs_weight(m::HierarchicalMinExPOMDP, s, a, sp, o)
+#     if (isterminal(m, s) || a in m.terminal_actions)
+#         w = Float64(isinf(o.thickness))
+#     else
+#         w =
+#             pdf(Normal(s.thickness[a...], m.σ_thickness), o.thickness) *
+#             pdf(Normal(s.grade[a...], m.σ_grade), o.grade)
+#     end
+#     return w
+# end

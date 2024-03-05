@@ -11,15 +11,18 @@ Defines the distributions used to sample geochemical domains.
 """
 @with_kw struct GeochemicalDomainDistribution
     N = 32
-    center = product_distribution([
-        Distributions.Uniform(N / 4.0, 3N / 4.0), Distributions.Uniform(N / 4.0, 3N / 4.0)
-    ])
-    points = [
-        product_distribution([
-            Distributions.Uniform(-N / 3.5, N / 3.5),
-            Distributions.Uniform(-N / 3.5, N / 3.5),
-        ]) for i in 1:10
-    ]
+    cx = Distributions.Uniform(N / 4.0, 3N / 4.0)
+    cy = Distributions.Uniform(N / 4.0, 3N / 4.0)
+    r1 = Distributions.Normal(5, 2.5)
+    r2 = Distributions.Normal(5, 2.5)
+    r3 = Distributions.Normal(5, 2.5)
+    r4 = Distributions.Normal(5, 2.5)
+    r5 = Distributions.Normal(5, 2.5)
+    r6 = Distributions.Normal(5, 2.5)
+    r7 = Distributions.Normal(5, 2.5)
+    r8 = Distributions.Normal(5, 2.5)
+    r9 = Distributions.Normal(5, 2.5)
+    r10 = Distributions.Normal(5, 2.5)
     angle = Distributions.Uniform(0, 2π)
     μ           # Mean of the GP within this domain
     kernel      # Kernel of the GP within this domain
@@ -31,28 +34,46 @@ Draws a sample of the center, points and angle that make up the blob shape
 Base.rand(rng::AbstractRNG, b::GeochemicalDomainDistribution) =
     (rand(rng, b.center), [rand(rng, p) for p in b.points], rand(rng, b.angle))
 
-"""
-Samples a geochemical domain (blob shape) for the provided parameters. 
-"""
-function draw_geochemical_domain(
-    N, center, pts, angle; σ=N / 25, grayscale=0.4, threshold=0.17
-)
-    pts = polysortbyangle([Luxor.Point(pt...) for pt in pts])
-    mat = @imagematrix begin
-        gsave()
-        background("black")
-        Luxor.origin(Luxor.Point(0, 0))
-        pos = Luxor.Point(center...)
-        Luxor.translate(pos)
-        Luxor.rotate(angle)
-        sethue(grayscale, grayscale, grayscale)
-        drawbezierpath(makebezierpath(pts), :fill)
-        grestore()
-    end N N
+# """
+# Samples a geochemical domain (blob shape) for the provided parameters. 
+# """
+# function draw_geochemical_domain(
+#     N, center, pts, angle; σ=N / 25, grayscale=0.4, threshold=0.17
+# )
+#     pts = polysortbyangle([Luxor.Point(pt...) for pt in pts])
+#     mat = @imagematrix begin
+#         gsave()
+#         background("black")
+#         Luxor.origin(Luxor.Point(0, 0))
+#         pos = Luxor.Point(center...)
+#         Luxor.translate(pos)
+#         Luxor.rotate(angle)
+#         sethue(grayscale, grayscale, grayscale)
+#         drawbezierpath(makebezierpath(pts), :fill)
+#         grestore()
+#     end N N
 
-    blurred = imfilter(mat, ImageFiltering.Kernel.gaussian(σ))
+#     blurred = imfilter(mat, ImageFiltering.Kernel.gaussian(σ))
 
-    return Float64.(Gray.(blurred) .> threshold)
+#     return Float64.(Gray.(blurred) .> threshold)
+# end
+function draw_geochemical_domain(N, center, rs, angle)
+    thetas = 0:36:359
+    pts = Vector{Tuple{Float64, Float64}}(undef, 10)
+    for i=1:10
+        pts[i] = center .+ (rs[i]*cosd(thetas[i]), rs[i]*sind(thetas[i]))
+    end
+    v = PolyArea(Ring(pts...))
+
+    # Fill the domain with values that are in the polyarea
+    domain = zeros(N, N)
+    for i in 1:N, j in 1:N
+        if Meshes.Point(i, j) in v
+            domain[i, j] = 1.0
+        end
+    end
+
+    return domain
 end
 
 """
