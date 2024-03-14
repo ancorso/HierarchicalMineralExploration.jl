@@ -434,10 +434,9 @@ end
     r81 ~ geochem_dist1.r8
     r91 ~ geochem_dist1.r9
     r101 ~ geochem_dist1.r10
-    angle1 ~ geochem_dist1.angle
     center1 = (cx1, cy1)
     rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
-    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
+    geochem1 = draw_geochemical_domain(N, center1, rs1)
 
     geochem_dist2 = h.geochem_domains[2]
     cx2 ~ geochem_dist2.cx
@@ -452,10 +451,9 @@ end
     r82 ~ geochem_dist2.r8
     r92 ~ geochem_dist2.r9
     r102 ~ geochem_dist2.r10
-    angle2 ~ geochem_dist2.angle
     center2 = (cx2, cy2)
     rs2 = [r12, r22, r32, r42, r52, r62, r72, r82, r92, r102]
-    geochem2 = draw_geochemical_domain(N, center2, rs2, angle2)
+    geochem2 = draw_geochemical_domain(N, center2, rs2)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
@@ -580,10 +578,9 @@ end
     r81 ~ geochem_dist1.r8
     r91 ~ geochem_dist1.r9
     r101 ~ geochem_dist1.r10
-    angle1 ~ geochem_dist1.angle
     center1 = (cx1, cy1)
     rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
-    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
+    geochem1 = draw_geochemical_domain(N, center1, rs1)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
@@ -684,10 +681,9 @@ end
     r81 ~ geochem_dist1.r8
     r91 ~ geochem_dist1.r9
     r101 ~ geochem_dist1.r10
-    angle1 ~ geochem_dist1.angle
     center1 = (cx1, cy1)
     rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
-    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
+    geochem1 = draw_geochemical_domain(N, center1, rs1)
 
     geochem_dist2 = h.geochem_domains[2]
     cx2 ~ geochem_dist2.cx
@@ -702,10 +698,9 @@ end
     r82 ~ geochem_dist2.r8
     r92 ~ geochem_dist2.r9
     r102 ~ geochem_dist2.r10
-    angle2 ~ geochem_dist2.angle
     center2 = (cx2, cy2)
     rs2 = [r12, r22, r32, r42, r52, r62, r72, r82, r92, r102]
-    geochem2 = draw_geochemical_domain(N, center2, rs2, angle2)
+    geochem2 = draw_geochemical_domain(N, center2, rs2)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
@@ -821,10 +816,9 @@ end
     r81 ~ geochem_dist1.r8
     r91 ~ geochem_dist1.r9
     r101 ~ geochem_dist1.r10
-    angle1 ~ geochem_dist1.angle
     center1 = (cx1, cy1)
     rs1 = [r11, r21, r31, r41, r51, r61, r71, r81, r91, r101]
-    geochem1 = draw_geochemical_domain(N, center1, rs1, angle1)
+    geochem1 = draw_geochemical_domain(N, center1, rs1)
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)

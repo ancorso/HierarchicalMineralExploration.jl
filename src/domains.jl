@@ -11,8 +11,8 @@ Defines the distributions used to sample geochemical domains.
 """
 @with_kw struct GeochemicalDomainDistribution
     N = 32
-    cx = Distributions.Uniform(N / 4.0, 3N / 4.0)
-    cy = Distributions.Uniform(N / 4.0, 3N / 4.0)
+    cx = Distributions.Normal(N/2.0,  N/2.0)
+    cy = Distributions.Uniform(N/2.0,  N/2.0)
     r1 = Distributions.Normal(5, 2.5)
     r2 = Distributions.Normal(5, 2.5)
     r3 = Distributions.Normal(5, 2.5)
@@ -23,7 +23,6 @@ Defines the distributions used to sample geochemical domains.
     r8 = Distributions.Normal(5, 2.5)
     r9 = Distributions.Normal(5, 2.5)
     r10 = Distributions.Normal(5, 2.5)
-    angle = Distributions.Uniform(0, 2π)
     μ           # Mean of the GP within this domain
     kernel      # Kernel of the GP within this domain
 end
@@ -57,7 +56,7 @@ Base.rand(rng::AbstractRNG, b::GeochemicalDomainDistribution) =
 
 #     return Float64.(Gray.(blurred) .> threshold)
 # end
-function draw_geochemical_domain(N, center, rs, angle)
+function draw_geochemical_domain(N, center, rs)
     thetas = 0:36:359
     pts = Vector{Tuple{Float64, Float64}}(undef, 10)
     for i=1:10
@@ -89,10 +88,10 @@ Defines the distributions used to sample a Graben shape.
 """
 @with_kw struct GrabenDistribution
     N = 32
-    left_top = Distributions.Uniform(0.15 * N, N)
-    left_width = Distributions.Uniform(0.05 * N, 0.25 * N)
-    right_top = Distributions.Uniform(0.15 * N, N)
-    right_width = Distributions.Uniform(0.05 * N, 0.25 * N)
+    left_top = Distributions.Normal(N/2.0, N/2.0)
+    left_width = Distributions.Normal(N/4.0, N/4.0)
+    right_top = Distributions.Normal(N/2.0, N/2.0)
+    right_width = Distributions.Normal(N/4.0, N/4.0)
     μ           # Mean of the GP within this domain
 end
 
