@@ -5,6 +5,7 @@ using StatsPlots
 using AbstractGPs
 using AdvancedMH
 using LogExpFunctions
+using POMDPs
 
 ## Setup mineral system models
 include("setup.jl")
@@ -19,22 +20,24 @@ sgt = m()
 plot_model(; sgt...)
 
 # Pre-select the points
-pts = [[rand(1:N), rand(1:N)] for _ in 1:100]
+pts = [[x, y] for x in 5:5:30 for y in 5:5:30]
 
 # Setup the algorithms
 alg = default_alg(h)
 
 # Construct the belief updater
 Nsamples=10
-Nparticles=100
+Nparticles=10
 up = MCMCUpdater(Nsamples, [h], Nparticles)
 b = initialize_belief(up, nothing)
 
 # Target data to assimilate
-i = 6
+i = 1
 observations = Dict(
     p => (thickness=sgt.thickness[p...], grade=sgt.grade[p...]) for p in pts[1:i]
 )
+
+plot_model(; sgt..., observations)
 
 # update the belief
 up.observations = observations

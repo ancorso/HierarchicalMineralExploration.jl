@@ -52,8 +52,40 @@ function default_alg(hypothesis)
                 (MH(), 1),
                 (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
                 (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 1),
-                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
-                (MH(:cx2, :cy2, :r12, :r22, :r32, :r42, :r52, :r62, :r72, :r82, :r92, :r102), 1),
+                (
+                    MH(
+                        :cx1,
+                        :cy1,
+                        :r11,
+                        :r21,
+                        :r31,
+                        :r41,
+                        :r51,
+                        :r61,
+                        :r71,
+                        :r81,
+                        :r91,
+                        :r101,
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :cx2,
+                        :cy2,
+                        :r12,
+                        :r22,
+                        :r32,
+                        :r42,
+                        :r52,
+                        :r62,
+                        :r72,
+                        :r82,
+                        :r92,
+                        :r102,
+                    ),
+                    1,
+                ),
                 (
                     MH(
                         :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
@@ -87,7 +119,7 @@ function default_alg(hypothesis)
                         :r91 => AdvancedMH.RandomWalkProposal(Normal()),
                         :r101 => AdvancedMH.RandomWalkProposal(Normal()),
                     ),
-                    1
+                    1,
                 ),
                 (
                     MH(
@@ -112,7 +144,23 @@ function default_alg(hypothesis)
                 (MH(), 1),
                 (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
                 (MH(:ltop2, :rtop2, :lwidth2, :rwidth2), 1),
-                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
+                (
+                    MH(
+                        :cx1,
+                        :cy1,
+                        :r11,
+                        :r21,
+                        :r31,
+                        :r41,
+                        :r51,
+                        :r61,
+                        :r71,
+                        :r81,
+                        :r91,
+                        :r101,
+                    ),
+                    1,
+                ),
                 (
                     MH(
                         :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
@@ -153,8 +201,40 @@ function default_alg(hypothesis)
             return Gibbs(
                 (MH(), 1),
                 (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
-                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
-                (MH(:cx2, :cy2, :r12, :r22, :r32, :r42, :r52, :r62, :r72, :r82, :r92, :r102), 1),
+                (
+                    MH(
+                        :cx1,
+                        :cy1,
+                        :r11,
+                        :r21,
+                        :r31,
+                        :r41,
+                        :r51,
+                        :r61,
+                        :r71,
+                        :r81,
+                        :r91,
+                        :r101,
+                    ),
+                    1,
+                ),
+                (
+                    MH(
+                        :cx2,
+                        :cy2,
+                        :r12,
+                        :r22,
+                        :r32,
+                        :r42,
+                        :r52,
+                        :r62,
+                        :r72,
+                        :r82,
+                        :r92,
+                        :r102,
+                    ),
+                    1,
+                ),
                 (
                     MH(
                         :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
@@ -203,7 +283,23 @@ function default_alg(hypothesis)
             return Gibbs(
                 (MH(), 1),
                 (MH(:ltop1, :rtop1, :lwidth1, :rwidth1), 1),
-                (MH(:cx1, :cy1, :r11, :r21, :r31, :r41, :r51, :r61, :r71, :r81, :r91, :r101), 1),
+                (
+                    MH(
+                        :cx1,
+                        :cy1,
+                        :r11,
+                        :r21,
+                        :r31,
+                        :r41,
+                        :r51,
+                        :r61,
+                        :r71,
+                        :r81,
+                        :r91,
+                        :r101,
+                    ),
+                    1,
+                ),
                 (
                     MH(
                         :ltop1 => AdvancedMH.RandomWalkProposal(Normal()),
@@ -363,8 +459,8 @@ end
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
-    ingeochem1(x) = geochem1[x...] == 1.0
-    pts, obs = getobs(observations, :grade, ingeochem1)
+    ingeochem1not2(x) = (geochem1[x...] == 1.0) && !(geochem2[x...] == 1.0)
+    pts, obs = getobs(observations, :grade, ingeochem1not2)
     if length(obs) > 0
         geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
         lgprob = logpdf(geochemGP1x, obs)
@@ -411,7 +507,7 @@ end
 
         # Construct the geochemical domain
         ibackground = [inbackground(x) for x in xs]
-        igeochem1 = [ingeochem1(x) for x in xs]
+        igeochem1 = [ingeochem1not2(x) for x in xs]
         igeochem2 = [ingeochem2(x) for x in xs]
         geochemdomain = zeros(N, N)
         geochemdomain[igeochem1] .= 1.0
@@ -613,8 +709,8 @@ end
 
     # Inside the first geochemical domain model
     geochemGP1 = GP((x) -> geochem_dist1.μ, geochem_dist1.kernel)
-    ingeochem1(x) = geochem1[x...] == 1.0
-    pts, obs = getobs(observations, :grade, ingeochem1)
+    ingeochem1not2(x) = (geochem1[x...] == 1.0) && !(geochem2[x...] == 1.0)
+    pts, obs = getobs(observations, :grade, ingeochem1not2)
     if length(obs) > 0
         geochemGP1x = geochemGP1(pts, h.σ_grade) # Conditions the GP on the observation points
         lgprob = logpdf(geochemGP1x, obs)
@@ -660,7 +756,7 @@ end
 
         # Construct the geochemical domain
         ibackground = [inbackground(x) for x in xs]
-        igeochem1 = [ingeochem1(x) for x in xs]
+        igeochem1 = [ingeochem1not2(x) for x in xs]
         igeochem2 = [ingeochem2(x) for x in xs]
         geochemdomain = zeros(N, N)
         geochemdomain[igeochem1] .= 1.0

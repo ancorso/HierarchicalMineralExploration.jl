@@ -148,7 +148,7 @@ function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
     mean_mineralization = mean(mineralization_maps, dims=3)[:,:,1]
     std_mineralization = std(mineralization_maps, dims=3)[:,:,1]
 
-    pmeanmin = heatmap(mean_mineralization; colorbar=false, clims=(0,250), cmap=:haline, axis=false, title="Belief Mean", margin=Plots.mm)
+    pmeanmin = heatmap(mean_mineralization'; colorbar=false, clims=(0,250), cmap=:haline, axis=false, title="Belief Mean", margin=Plots.mm)
     if length(observations) > 0
         scatter!(
             xpts,
@@ -166,7 +166,7 @@ function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
         scatter!([],[], legend=false)
     end
 
-    pstdmin = heatmap(std_mineralization; colorbar=false, clims=(0,60), cmap=:haline, axis=false, title="Belief Std", margin=0Plots.mm)
+    pstdmin = heatmap(std_mineralization'; colorbar=false, clims=(0,60), cmap=:haline, axis=false, title="Belief Std", margin=0Plots.mm)
 
     if length(observations) > 0
         scatter!(
@@ -186,7 +186,7 @@ function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
 
     # Plot the hypothesis returns
     rs = [extraction_reward(pomdp, s) for s in particles(b)]
-    b_hyps = [hypothesis_fn(s) for s in b.particles]
+    b_hyps = [hypothesis_fn(s) for s in particles(b)]
 
     h1_returns = rs[findall(b_hyps .== 1)]
     h2_returns = rs[findall(b_hyps .== 2)]

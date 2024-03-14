@@ -33,6 +33,7 @@ function get_hypothesis(s)
     elseif structural1(s) && geochem1(s)
         return 4
     else
-        error("not sure what this is")
+        # warn("not sure what this is")
+        return 4
     end
 end

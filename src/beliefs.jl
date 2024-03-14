@@ -63,7 +63,7 @@ end
 function POMDPs.update(up::MCMCUpdater, b)
     # Run the chains
     loglikelihoods = [] # this holds all likelihoods for particles across hypotheses
-    all_particles = [] # this holds all state particles across hypotheses
+    all_particles = HierarchicalMinExState[] # this holds all state particles across hypotheses
     for (hi, (m, alg, h)) in enumerate(zip(up.models, up.algs, up.hypotheses))
         println("updating hypothesis: ", hi)
 

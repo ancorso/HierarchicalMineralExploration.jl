@@ -156,7 +156,7 @@ function run_trial_rejuvination(
         # Belief updates
         discrete_belief = update(discrete_updater, discrete_belief, a_int, o_int)
         for i in bi:length(updaters)
-            belief[i] = update(updaters[i], beliefs[i], a, (thickness=o[1], grade=o[2]))
+            beliefs[i] = update(updaters[i], beliefs[i], a, (thickness=o[1], grade=o[2]))
         end
         s = sp
     end

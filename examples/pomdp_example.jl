@@ -29,8 +29,8 @@ pomdp = HierarchicalMinExPOMDP()
 h_gt = hypotheses[1]
 m_gt = turing_model(h_gt)(Dict(), h_gt, true)
 
-Nsamples = 20
-Nparticles = 200
+Nsamples = 10
+Nparticles = 400
 
 all_results = []
 # run the experiments
