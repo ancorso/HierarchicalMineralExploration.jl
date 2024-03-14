@@ -12,7 +12,7 @@ Defines the distributions used to sample geochemical domains.
 @with_kw struct GeochemicalDomainDistribution
     N = 32
     cx = Distributions.Normal(N/2.0,  N/2.0)
-    cy = Distributions.Uniform(N/2.0,  N/2.0)
+    cy = Distributions.Normal(N/2.0,  N/2.0)
     r1 = Distributions.Normal(5, 2.5)
     r2 = Distributions.Normal(5, 2.5)
     r3 = Distributions.Normal(5, 2.5)
@@ -57,9 +57,10 @@ Base.rand(rng::AbstractRNG, b::GeochemicalDomainDistribution) =
 #     return Float64.(Gray.(blurred) .> threshold)
 # end
 function draw_geochemical_domain(N, center, rs)
-    thetas = 0:36:359
-    pts = Vector{Tuple{Float64, Float64}}(undef, 10)
-    for i=1:10
+    Npts = length(rs)
+    thetas = range(0, 359, Npts)
+    pts = Vector{Tuple{Float64, Float64}}(undef, Npts)
+    for i=1:Npts
         pts[i] = center .+ (rs[i]*cosd(thetas[i]), rs[i]*sind(thetas[i]))
     end
     v = PolyArea(Ring(pts...))
