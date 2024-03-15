@@ -136,7 +136,7 @@ function plot_mineralization(s, observations=Dict(); axis=false, kwargs...)
     # heatmap!(imgl, colorbar=false, color=:grays, alpha=0.2)
 end
 
-function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
+function plot_belief(pomdp, step, observations=Dict(); kwargs...)
     s, b = step.s, step.b
 
     # plot the belief (with ovbservations)
@@ -185,13 +185,12 @@ function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
     end
 
     # Plot the hypothesis returns
-    rs = [extraction_reward(pomdp, s) for s in particles(b)]
-    b_hyps = [hypothesis_fn(s) for s in particles(b)]
+    rs = [extraction_reward(pomdp, s) for s in particles(b.particles)]
 
-    h1_returns = rs[findall(b_hyps .== 1)]
-    h2_returns = rs[findall(b_hyps .== 2)]
-    h3_returns = rs[findall(b_hyps .== 3)]
-    h4_returns = rs[findall(b_hyps .== 4)]
+    h1_returns = rs[findall(b.hypotheses .== 1)]
+    h2_returns = rs[findall(b.hypotheses .== 2)]
+    h3_returns = rs[findall(b.hypotheses .== 3)]
+    h4_returns = rs[findall(b.hypotheses .== 4)]
 
     pret = histogram(h1_returns, label="", bins=-610:50:600, alpha=0.5, title="Returns", xlabel="Returns", linealpha=0., normalize=:probability, legend=:topleft, ylims=(0,0.5))
     histogram!(h2_returns, label="", bins=-620:50:600, alpha=0.5, linealpha=0, normalize=:probability)
@@ -202,7 +201,7 @@ function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
     vline!([r], color=:red, label="Ground Truth")
 
     # Plot the distrribution over hypotheses
-    phs = [sum(b_hyps .== i) for i in 1:4] ./ length(b_hyps)
+    phs = [sum(b.hypotheses .== i) for i in 1:4] ./ length(b.hypotheses)
     phypoth = bar([1], [phs[1]], ylims=(0,1), title="P(hypothesis)", xlabel="Hypothesis", label="", linealpha=0., alpha=0.5)
     bar!([2], [phs[2]], label="", linealpha=0., alpha=0.5)
     bar!([3], [phs[3]], label="", linealpha=0., alpha=0.5)
@@ -212,8 +211,8 @@ function plot_belief(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
     plot(pmeanmin, pstdmin, phypoth, pret; margin=0Plots.mm, layout=grid(2, 2, heights=[0.67, 0.33]), kwargs...)
 end
 
-function plot_step(pomdp, step, hypothesis_fn, observations=Dict(); kwargs...)
+function plot_step(pomdp, step, observations=Dict(); kwargs...)
     pstate = plot_mineralization(step.s, observations;)
-    pbel = plot_belief(pomdp, step, hypothesis_fn, observations;)
+    pbel = plot_belief(pomdp, step, observations;)
     plot(pstate, pbel; margin=0Plots.mm, layout=grid(1, 2, widths=[0.33 ,0.67]), kwargs...)
 end

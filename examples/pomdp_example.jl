@@ -29,7 +29,7 @@ pomdp = HierarchicalMinExPOMDP()
 h_gt = hypotheses[1]
 m_gt = turing_model(h_gt)(Dict(), h_gt, true)
 
-Nsamples = 10
+Nsamples = 100
 Nparticles = 100
 
 all_results = []
@@ -45,19 +45,19 @@ for i in 1:20
 
     # Run Grid search
     history = run_gridsearch(pomdp, s_gt, hypotheses, max_ent_hypothesis; Nsamples, Nparticles)
-    plot_gif(pomdp, history, get_hypothesis, "$(output_dir)/history_gridsearch$i.gif")
+    plot_gif(pomdp, history, "$(output_dir)/history_gridsearch$i.gif")
     @save "$(output_dir)/history_gridsearch$i.jld2" history
     results["gridsearch"] = history
 
     # Run POMDP with correct hypothesis
     history = run_trial(pomdp, s_gt, [h_gt], max_ent_hypothesis; Nsamples, Nparticles)
-    plot_gif(pomdp, history, get_hypothesis, "$(output_dir)/history_1correct$i.gif")
+    plot_gif(pomdp, history, "$(output_dir)/history_1correct$i.gif")
     @save "$(output_dir)/history_1correct$i.jld2" history
     results["1correct"] = history
 
     # Run POMDP with all 4 hypotheses
     history = run_trial(pomdp, s_gt, hypotheses, max_ent_hypothesis; Nsamples, Nparticles)
-    plot_gif(pomdp, history, get_hypothesis, "$(output_dir)/history_4withcorrect$i.gif")
+    plot_gif(pomdp, history, "$(output_dir)/history_4withcorrect$i.gif")
     @save "$(output_dir)/history_4withcorrect$i.jld2" history
     results["4withcorrect"] = history
 
@@ -65,7 +65,7 @@ for i in 1:20
     history = run_trial(
         pomdp, s_gt, hypotheses[2:end], max_ent_hypothesis; Nsamples, Nparticles
     )
-    plot_gif(pomdp, history, get_hypothesis, "$(output_dir)/history_3incorrect$i.gif")
+    plot_gif(pomdp, history, "$(output_dir)/history_3incorrect$i.gif")
     @save "$(output_dir)/history_3incorrect$i.jld2" history
     results["3incorrect"] = history
 
@@ -73,7 +73,7 @@ for i in 1:20
     history = run_trial_rejuvination(
         pomdp, s_gt, reverse(hypotheses), max_ent_hypothesis; Nsamples, Nparticles
     )
-    plot_gif(pomdp, history, get_hypothesis, "$(output_dir)/history_rejuvination$i.gif")
+    plot_gif(pomdp, history, "$(output_dir)/history_rejuvination$i.gif")
     @save "$(output_dir)/history_rejuvination$i.jld2" history
     results["rejuvination"] = history
 

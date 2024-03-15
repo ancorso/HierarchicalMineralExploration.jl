@@ -11,8 +11,8 @@ Defines the distributions used to sample geochemical domains.
 """
 @with_kw struct GeochemicalDomainDistribution
     N = 32
-    cx = Distributions.Normal(N/2.0,  N/2.0)
-    cy = Distributions.Normal(N/2.0,  N/2.0)
+    cx = Distributions.Normal(N/2.0,  N/4.0)
+    cy = Distributions.Normal(N/2.0,  N/4.0)
     r1 = Distributions.Normal(5, 2.5)
     r2 = Distributions.Normal(5, 2.5)
     r3 = Distributions.Normal(5, 2.5)

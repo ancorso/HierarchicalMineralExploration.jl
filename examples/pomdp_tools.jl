@@ -1,5 +1,5 @@
 ## define the discretization and solver functions
-function discretize_fn(pomdp, b::ParticleCollection; Nobs=5)
+function discretize_fn(pomdp, b::MultiHypothesisBelief; Nobs=5)
     sts = particles(b)
     state_abstraction = NearestNeighborAbstraction(
         sts; convert=(s) -> vcat(s.thickness[:], s.grade[:])
@@ -53,7 +53,7 @@ function run_trial(
 
         # compute hypothesis likelihoods
         hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations), hypothesis_loglikelihoods(up)...
+            logprob(max_ent_hyp, up.observations),up.hypothesis_loglikelihoods...
         ]
 
         # Solve the pomdp 
@@ -118,7 +118,7 @@ function run_trial_rejuvination(
 
         # compute hypothesis likelihoods
         hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations), hypothesis_loglikelihoods(up)...
+            logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
         ]
 
         # add hypotheses until we match the data
@@ -129,7 +129,7 @@ function run_trial_rejuvination(
                 b = beliefs[bi]
                 up = updaters[bi]
                 hyp_logprobs = [
-                    logprob(max_ent_hyp, up.observations), hypothesis_loglikelihoods(up)...
+                    logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
                 ]
             end
         end
@@ -194,7 +194,7 @@ function run_gridsearch(
 
         # compute hypothesis likelihoods
         hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations), hypothesis_loglikelihoods(up)...
+            logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
         ]
 
         # Take the action step
@@ -224,7 +224,7 @@ function run_gridsearch(
 
     # compute hypothesis likelihoods
     hyp_logprobs = [
-        logprob(max_ent_hyp, up.observations), hypothesis_loglikelihoods(up)...
+        logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
     ]
 
     # Store the history
@@ -232,12 +232,12 @@ function run_gridsearch(
     return hist
 end
 
-function plot_gif(pomdp, history, get_hypothesis, filename)
+function plot_gif(pomdp, history, filename)
     anim = @animate for i in eachindex(history)
         observations = Dict(
             step.a => (thickness=step.o[1], grade=step.o[2]) for step in history[1:(i - 1)]
         )
-        plot_step(pomdp, history[i], get_hypothesis, observations; size=(1200, 600))
+        plot_step(pomdp, history[i], observations; size=(1200, 600))
     end
     return gif(anim, filename; fps=2)
 end

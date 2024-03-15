@@ -35,7 +35,7 @@ include("pomdp.jl")
 export HierarchicalMinExPOMDP, HierarchicalMinExState, extraction_reward
 
 include("beliefs.jl")
-export MCMCUpdater, hypothesis_loglikelihoods
+export MCMCUpdater, MultiHypothesisBelief
 
 include("visualization.jl")
 export plot_model, plot_state, plot_mineralization, plot_belief, plot_step

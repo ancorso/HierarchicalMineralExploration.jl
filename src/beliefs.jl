@@ -5,6 +5,7 @@
 mutable struct MCMCUpdater <: Updater
     Nsamples # Number of MCMC iterations
     hypotheses::Vector{Hypothesis} # Set of hypotheses
+    hypothesis_loglikelihoods::Vector{Float64} # Likelihood of each hypothesis
     N # Number of particles to produce (1 per chain)
     observations::Dict # Observations
     chains::Vector # one chains per hypothesis
@@ -14,6 +15,7 @@ mutable struct MCMCUpdater <: Updater
         return new(
             Nsamples,
             hypotheses,
+            zeros(length(hypotheses)), # initialize with uniform likelihoods
             N,
             observations,
             Any[nothing for i in 1:length(hypotheses)],
@@ -23,23 +25,13 @@ mutable struct MCMCUpdater <: Updater
     end
 end
 
-# Get the mean (log)likelihood of each hypothesis
-function hypothesis_loglikelihoods(up::MCMCUpdater)
-    # If no chains, then no update, meaning we have a prior
-    if isnothing(up.chains[1])
-        Nhyp = length(up.hypotheses)
-        return log.(ones(Nhyp) ./ Nhyp)
-    end
-
-    # For each hypothesis, compute the mean loglikelihood
-    loglikelihoods = []
-    for (chain, m, h) in zip(up.chains, up.models, up.hypotheses)
-        mcond = m(up.observations, h)
-        loglikelihoods_h = generated_quantities(mcond, chain[end, :, :])[:]
-        push!(loglikelihoods, logsumexp(loglikelihoods_h) .- log(up.N))
-    end
-    return loglikelihoods
+# Belief type that also stores which hypothesis a particle belongs to
+struct MultiHypothesisBelief
+    particles::ParticleCollection
+    hypotheses
 end
+
+ParticleFilters.particles(b::MultiHypothesisBelief) = particles(b.particles)
 
 """
     initialize_belief(up::MCMCUpdater, d)
@@ -50,20 +42,23 @@ function POMDPs.initialize_belief(up::MCMCUpdater, d)
     @assert isempty(up.observations)
     N_particles_per_hypothesis = up.N ÷ length(up.hypotheses)
     particles = HierarchicalMinExState[]
-    for h in up.hypotheses
+    hypotheses = Int[]
+    for (hi, h) in enumerate(up.hypotheses)
         m = turing_model(h)(Dict(), h, true)
         for i in 1:N_particles_per_hypothesis
             res = m()
             push!(particles, HierarchicalMinExState(res.thickness, res.grade))
+            push!(hypotheses, hi)
         end
     end
-    return ParticleCollection(particles)
+    return MultiHypothesisBelief(ParticleCollection(particles), hypotheses)
 end
 
-function POMDPs.update(up::MCMCUpdater, b)
+function POMDPs.update(up::MCMCUpdater, b::MultiHypothesisBelief)
     # Run the chains
     loglikelihoods = [] # this holds all likelihoods for particles across hypotheses
-    all_particles = HierarchicalMinExState[] # this holds all state particles across hypotheses
+    particles = [] # this holds all state particles across hypotheses
+    hypotheses = [] # this holds the hypothesis index for each particle
     for (hi, (m, alg, h)) in enumerate(zip(up.models, up.algs, up.hypotheses))
         println("updating hypothesis: ", hi)
 
@@ -83,49 +78,63 @@ function POMDPs.update(up::MCMCUpdater, b)
         end
         # Compute observation likelihoods and add to master list
         loglikelihoods_h = generated_quantities(mcond, up.chains[hi][end, :, :])[:]
-        push!(loglikelihoods, loglikelihoods_h...)
+        push!(loglikelihoods, logsumexp(loglikelihoods_h) .- log(length(loglikelihoods_h)))
 
         # Sample the actual state particles and add to master list
         os = generated_quantities(mcond_w_samples, up.chains[hi][end, :, :])[:]
         ps = [HierarchicalMinExState(o.thickness, o.grade) for o in os]
-        push!(all_particles, ps...)
+        push!(particles, ps)
+        push!(hypotheses, fill(hi, length(ps)))
 
-        # Resample the chains to retain high likelihood particles
-        weights = exp.(loglikelihoods_h .- logsumexp(loglikelihoods_h))
-        indices = rand(Categorical(weights), up.N)
-        up.chains[hi] = up.chains[hi][:, :, indices]
+        # # Resample the chains to retain high likelihood particles
+        # weights = exp.(loglikelihoods_h .- logsumexp(loglikelihoods_h))
+        # indices = rand(Categorical(weights), up.N)
+        # up.chains[hi] = up.chains[hi][:, :, indices]
 
-        # Keep sampling some more
-        up.chains[hi] = Turing.sample(
-            mcond,
-            alg,
-            MCMCThreads(),
-            up.Nsamples,
-            up.N;
-            resume_from=up.chains[hi],
-            save_state=true,
-        )
+        # # Keep sampling some more
+        # up.chains[hi] = Turing.sample(
+        #     mcond,
+        #     alg,
+        #     MCMCThreads(),
+        #     up.Nsamples,
+        #     up.N;
+        #     resume_from=up.chains[hi],
+        #     save_state=true,
+        # )
 
-        # Compute observation likelihoods and add to master list
-        loglikelihoods_h = generated_quantities(mcond, up.chains[hi][end, :, :])[:]
-        push!(loglikelihoods, loglikelihoods_h...)
+        # # Compute observation likelihoods and add to master list
+        # loglikelihoods_h = generated_quantities(mcond, up.chains[hi][end, :, :])[:]
+        # push!(loglikelihoods, loglikelihoods_h...)
 
-        # Sample the actual state particles and add to master list
-        os = generated_quantities(mcond_w_samples, up.chains[hi][end, :, :])[:]
-        ps = [HierarchicalMinExState(o.thickness, o.grade) for o in os]
-        push!(all_particles, ps...)
+        # # Sample the actual state particles and add to master list
+        # os = generated_quantities(mcond_w_samples, up.chains[hi][end, :, :])[:]
+        # ps = [HierarchicalMinExState(o.thickness, o.grade) for o in os]
+        # push!(all_particles, ps...)
 
-        # Resample the chains to retain high likelihood particles
-        weights = exp.(loglikelihoods_h .- logsumexp(loglikelihoods_h))
-        indices = rand(Categorical(weights), up.N)
-        up.chains[hi] = up.chains[hi][:, :, indices]
+        # # Resample the chains to retain high likelihood particles
+        # weights = exp.(loglikelihoods_h .- logsumexp(loglikelihoods_h))
+        # indices = rand(Categorical(weights), up.N)
+        # up.chains[hi] = up.chains[hi][:, :, indices]
     end
 
-    # Sample particles based on hypothesis likelihoods
-    weights = exp.(loglikelihoods .- logsumexp(loglikelihoods))
-    indices = rand(Categorical(weights), up.N)
+    # figure out how many particles to sample for each hypothesis
+    relative_weights = exp.(loglikelihoods .- logsumexp(loglikelihoods))
+    @assert (sum(relative_weights) - 1) < 1e-6
+    Nh = floor.(Int, up.N .* relative_weights)
+    Nh[argmax(Nh)] += up.N - sum(Nh) # Make sure we add up to N
+    @assert sum(Nh) == up.N
+    @assert all(Nh .>= 0)
 
-    return ParticleCollection(all_particles[indices])
+    # Sample particles without replacement from each hypothesis
+    all_particles = []
+    all_hypotheses = []
+    for i = 1:length(up.hypotheses)
+        indices = StatsBase.sample(1:length(particles[i]), Nh[i], replace=false)
+        push!(all_particles, particles[i][indices]...)
+        push!(all_hypotheses, hypotheses[i][indices]...)
+    end
+
+    return MultiHypothesisBelief(ParticleCollection(all_particles), hypotheses)
 end
 
 """
