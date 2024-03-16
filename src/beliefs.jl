@@ -134,7 +134,7 @@ function POMDPs.update(up::MCMCUpdater, b::MultiHypothesisBelief)
         push!(all_hypotheses, hypotheses[i][indices]...)
     end
 
-    return MultiHypothesisBelief(ParticleCollection(all_particles), hypotheses)
+    return MultiHypothesisBelief(ParticleCollection(all_particles), all_hypotheses)
 end
 
 """
