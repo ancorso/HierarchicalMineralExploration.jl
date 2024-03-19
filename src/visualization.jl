@@ -192,7 +192,7 @@ function plot_belief(pomdp, step, observations=Dict(); kwargs...)
     h3_returns = rs[findall(b.hypotheses .== 3)]
     h4_returns = rs[findall(b.hypotheses .== 4)]
 
-    pret = histogram(h1_returns, label="", bins=-610:50:600, alpha=0.5, title="Returns", xlabel="Returns", linealpha=0., normalize=:probability, legend=:topleft, ylims=(0,0.5))
+    pret = histogram(h1_returns, label="", bins=-150:50:150, alpha=0.5, title="Returns", xlabel="Returns", linealpha=0., normalize=:probability, legend=:topleft, ylims=(0,0.5))
     histogram!(h2_returns, label="", bins=-620:50:600, alpha=0.5, linealpha=0, normalize=:probability)
     histogram!(h3_returns, label="", bins=-630:50:600, alpha=0.5, linealpha=0, normalize=:probability)
     histogram!(h4_returns, label="", bins=-640:50:600, alpha=0.5, linealpha=0, normalize=:probability)

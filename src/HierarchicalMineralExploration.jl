@@ -18,6 +18,7 @@ using POMDPTools
 using ParticleFilters
 using StatsBase
 using Meshes
+using DataStructures
 
 include("domains.jl")
 export ThicknessBackground, GradeBackground

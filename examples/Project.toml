@@ -2,6 +2,7 @@
 AbstractGPs = "99985d1d-32ba-4be9-9821-2ec096f28918"
 AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 HierarchicalMineralExploration = "b3fd8acb-03c6-4169-9364-ec776f94a96f"
 LazySets = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"

@@ -27,13 +27,13 @@ pts = [[x, y] for x in 5:5:30 for y in 5:5:30]
 alg = default_alg(h)
 
 # Construct the belief updater
-Nsamples=10
-Nparticles=10
+Nsamples=100
+Nparticles=100
 up = MCMCUpdater(Nsamples, hypotheses, Nparticles)
 b = initialize_belief(up, nothing)
 
 # Target data to assimilate
-i = 15
+i = 36
 obs = Dict(
     p => (thickness=sgt.thickness[p...], grade=sgt.grade[p...]) for p in pts[1:i]
 )
@@ -52,7 +52,7 @@ b = update(up, b)
 # chn = sample(mcond, alg, 100; save_state=true, discard_initial=100)
 # # ess(chn)
 # # plot(chn)
-# plot(chn[:,:lp,:])
+plot(up.chains[4][:,:lp,:])
 
 
 # os = generated_quantities(mcond_w_samples, chn[:, :, :])[:]

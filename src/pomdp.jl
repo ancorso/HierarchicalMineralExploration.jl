@@ -20,10 +20,10 @@ const TERMINAL_LOCATION = (-1, -1)
 ## Definition of the POMDP
 @with_kw struct HierarchicalMinExPOMDP <: POMDP{Any,Any,Any}
     grid_dims = (32, 32)
-    grade_threshold = 10.0
-    extraction_cost = 400 # this is an eyball from 100 samples
+    grade_threshold = 6.0
+    extraction_cost = 35 # this is an eyball from 100 samples to give 50/50 odds
     drill_cost = 0.1
-    drill_locations = [(i, j) for i in 5:5:30 for j in 5:5:30]
+    drill_locations = [(i, j) for i in 3:3:32 for j in 3:3:32]
     terminal_actions = [:abandon, :mine]
     σ_thickness = 0.01
     σ_grade = 0.01
@@ -35,7 +35,7 @@ POMDPs.isterminal(m::HierarchicalMinExPOMDP, s) = s == :terminal
 POMDPs.actions(m::HierarchicalMinExPOMDP) = [m.terminal_actions..., m.drill_locations...]
 POMDPs.actionindex(m::HierarchicalMinExPOMDP, a) = findfirst([a] .== actions(m))
 function calc_massive(m::HierarchicalMinExPOMDP, s)
-    return sum(s.thickness .* (s.grade .> m.grade_threshold))
+    return sum(s.thickness .* s.grade .* (s.grade .> m.grade_threshold)) / 100
 end
 function extraction_reward(m::HierarchicalMinExPOMDP, s)
     return calc_massive(m, s) - m.extraction_cost

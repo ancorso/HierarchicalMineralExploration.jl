@@ -20,7 +20,7 @@ function discretize_fn(pomdp, b::MultiHypothesisBelief; Nobs=5)
     return DiscretizedPOMDP(pomdp, hist, state_abstraction, observation_abstraction)
 end
 
-function solver_fn(discrete_pomdp; solver_time=10.0)
+function solver_fn(discrete_pomdp; solver_time=25.0)
     return POMDPs.solve(SARSOPSolver(; max_time=solver_time), discrete_pomdp)
 end
 
@@ -30,8 +30,7 @@ function run_trial(
     s,
     hypotheses,
     max_ent_hyp;
-    Nsamples=10,
-    Nparticles=100,
+    Nsamples=100,
     max_steps=37,
     verbose=true,
 )
@@ -41,7 +40,7 @@ function run_trial(
     steps = 0
 
     # Initialize belief and updater
-    up = MCMCUpdater(Nsamples, hypotheses, Nparticles)
+    up = MCMCUpdater(Nsamples, hypotheses)
     b0 = initialize_belief(up, nothing)
     b = b0
 
@@ -53,7 +52,7 @@ function run_trial(
 
         # compute hypothesis likelihoods
         hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations),up.hypothesis_loglikelihoods...
+            logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
         ]
 
         # Solve the pomdp 
@@ -90,8 +89,7 @@ function run_trial_rejuvination(
     s,
     hypotheses,
     max_ent_hyp;
-    Nsamples=10,
-    Nparticles=100,
+    Nsamples=100,
     max_steps=37,
     verbose=true,
 )
@@ -102,7 +100,8 @@ function run_trial_rejuvination(
 
     # Initialize belief and updater
     updaters = [
-        MCMCUpdater(Nsamples, hypotheses[1:i], Nparticles) for i in 1:length(hypotheses)
+        MCMCUpdater(Nsamples, OrderedDict(j => hypotheses[j] for j in 1:i)) for
+        i in 1:length(hypotheses)
     ]
     beliefs = [initialize_belief(up, nothing) for up in updaters]
     bi = 1
@@ -169,8 +168,7 @@ function run_gridsearch(
     s,
     hypotheses,
     max_ent_hyp;
-    Nsamples=10,
-    Nparticles=100,
+    Nsamples=100,
     max_steps=37,
     verbose=true,
 )
@@ -180,13 +178,13 @@ function run_gridsearch(
     steps = 0
 
     # Initialize belief and updater
-    up = MCMCUpdater(Nsamples, hypotheses, Nparticles)
+    up = MCMCUpdater(Nsamples, hypotheses)
     b0 = initialize_belief(up, nothing)
     b = b0
     println("length of belief: ", length(particles(b)))
 
     # Loop over actions
-    for a in pomdp.drill_locations
+    for a in [(i, j) for i in 5:5:30 for j in 5:5:30]
         # Manage the steps
         steps += 1
         println("step: ", steps)
@@ -209,7 +207,7 @@ function run_gridsearch(
 
         # Belief updates
         b = update(up, b, a, (thickness=o[1], grade=o[2]))
-        s=sp
+        s = sp
     end
 
     rs = [extraction_reward(pomdp, s) for s in particles(b)]
@@ -223,9 +221,7 @@ function run_gridsearch(
     verbose && println("a: ", a, " o: ", o, " r: ", r)
 
     # compute hypothesis likelihoods
-    hyp_logprobs = [
-        logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
-    ]
+    hyp_logprobs = [logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...]
 
     # Store the history
     push!(hist, (; s, a, o, r, b, hyp_logprobs))

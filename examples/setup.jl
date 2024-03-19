@@ -9,48 +9,49 @@ graben_bottom = Normal(11, 6)
 grabens = [
     GrabenDistribution(;
         N,
-        μ=15.0,
-        left_top=graben_top,
+        μ=9.5,
+        left_top=graben_bottom,
         left_width=graben_width,
-        right_top=graben_top,
+        right_top=graben_bottom,
         right_width=graben_width,
     ),
     GrabenDistribution(;
         N,
-        μ=8.0,
-        left_top=graben_bottom,
+        μ=7.5,
+        left_top=graben_top,
         left_width=graben_width,
-        right_top=graben_bottom,
+        right_top=graben_top,
         right_width=graben_width,
     ),
 ]
 γ₀ = GradeBackground(0.0, K) # Background grade distribution
 σᵧ = 0.001 # Standard deviation of the measurement noise on the grade
 geochem_domains = [
-    GeochemicalDomainDistribution(; N, μ=15.0, kernel=K),
-    GeochemicalDomainDistribution(; N, μ=8.0, kernel=K),
+    GeochemicalDomainDistribution(; N, μ=7.5, kernel=K),
+    GeochemicalDomainDistribution(; N, μ=9.5, kernel=K),
 ]
 
-hypotheses = [
-    Hypothesis(N, t₀, σₜ, grabens, γ₀, σᵧ, geochem_domains), # Two grabens, two geochem domains
-    Hypothesis(N, t₀, σₜ, grabens, γ₀, σᵧ, [geochem_domains[1]]), # Two grabens, single geochem domain
-    Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, geochem_domains), # Single graben, two geochem domains
-    Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, [geochem_domains[1]]), # Single graben, single geochem domain
-]
+hypotheses = OrderedDict(
+    1 => Hypothesis(N, t₀, σₜ, grabens, γ₀, σᵧ, geochem_domains), # Two grabens, two geochem domains
+    2 => Hypothesis(N, t₀, σₜ, grabens, γ₀, σᵧ, [geochem_domains[1]]), # Two grabens, single geochem domain
+    3 => Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, geochem_domains), # Single graben, two geochem domains
+    4 => Hypothesis(N, t₀, σₜ, [grabens[1]], γ₀, σᵧ, [geochem_domains[1]]), # Single graben, single geochem domain
+)
 max_ent_hypothesis = MaxEntropyHypothesis(Normal(8, 8), Normal(8, 8))
 
-
 # ## Visualize the different hypotheses
-# pomdp = HierarchicalMinExPOMDP()
-# hi = 4
+# pomdp = HierarchicalMinExPOMDP(; extraction_cost=0)
+# hi = 2
 
 # h = hypotheses[hi]
 # m_type = turing_model(h)
 # m = m_type(Dict(), h, true)
-# sample_states = [m() for i=1:100]
+# sample_states = [m() for i in 1:100]
 
 # rs = [extraction_reward(pomdp, s) for s in sample_states]
-# histogram(rs, title="Extraction reward distribution (hypothesis $hi)", xlabel="Reward")
+# mean(rs)
+# extrema(rs)
+# histogram(rs; title="Extraction reward distribution (hypothesis $hi)", xlabel="Reward")
 
 # anim = @animate for (i, p) in enumerate(sample_states)
 #     plot_state(p)
