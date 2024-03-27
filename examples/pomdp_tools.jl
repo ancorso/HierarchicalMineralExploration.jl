@@ -51,9 +51,8 @@ function run_trial(
         steps > max_steps && break
 
         # compute hypothesis likelihoods
-        hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
-        ]
+        hyp_logprobs = deepcopy(up.hypothesis_loglikelihoods)
+        hyp_logprobs[0] = logprob(max_ent_hyp, up.observations)
 
         # Solve the pomdp 
         discrete_pomdp = discretize_fn(pomdp, b)
@@ -69,7 +68,7 @@ function run_trial(
         verbose && println("a: ", a, " o: ", o, " r: ", r)
 
         # Store the history
-        push!(hist, (; s, a, o, r, b, hyp_logprobs))
+        push!(hist, (; s, a, o, r, b, hyp_logprobs, up=deepcopy(up)))
 
         # Check if terminal and break before updating the belief
         isterminal(pomdp, sp) && break
@@ -116,20 +115,18 @@ function run_trial_rejuvination(
         steps > max_steps && break
 
         # compute hypothesis likelihoods
-        hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
-        ]
+        hyp_logprobs = deepcopy(up.hypothesis_loglikelihoods)
+        hyp_logprobs[0] = logprob(max_ent_hyp, up.observations)
 
         # add hypotheses until we match the data
         if steps > 1
-            while all(hyp_logprobs[1] .> hyp_logprobs[2:end])
+            while all(hyp_logprobs[0] .> values(up.hypothesis_loglikelihoods))
                 println("ADDING HYPOTHESES")
                 bi += 1
                 b = beliefs[bi]
                 up = updaters[bi]
-                hyp_logprobs = [
-                    logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
-                ]
+                hyp_logprobs = deepcopy(up.hypothesis_loglikelihoods)
+                hyp_logprobs[0] = logprob(max_ent_hyp, up.observations)
             end
         end
 
@@ -147,7 +144,7 @@ function run_trial_rejuvination(
         verbose && println("a: ", a, " o: ", o, " r: ", r)
 
         # Store the history
-        push!(hist, (; s, a, o, r, b, hyp_logprobs))
+        push!(hist, (; s, a, o, r, b, hyp_logprobs, up=deepcopy(up)))
 
         # Check if terminal and break before updating the belief
         isterminal(pomdp, sp) && break
@@ -191,16 +188,15 @@ function run_gridsearch(
         steps > max_steps && break
 
         # compute hypothesis likelihoods
-        hyp_logprobs = [
-            logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...
-        ]
+        hyp_logprobs = deepcopy(up.hypothesis_loglikelihoods)
+        hyp_logprobs[0] = logprob(max_ent_hyp, up.observations)
 
         # Take the action step
         sp, o, r = gen(pomdp, s, a, Random.GLOBAL_RNG)
         verbose && println("a: ", a, " o: ", o, " r: ", r)
 
         # Store the history
-        push!(hist, (; s, a, o, r, b, hyp_logprobs))
+        push!(hist, (; s, a, o, r, b, hyp_logprobs, up=deepcopy(up)))
 
         # Check if terminal and break before updating the belief
         isterminal(pomdp, sp) && error("shouldn't be terminal")
@@ -221,10 +217,11 @@ function run_gridsearch(
     verbose && println("a: ", a, " o: ", o, " r: ", r)
 
     # compute hypothesis likelihoods
-    hyp_logprobs = [logprob(max_ent_hyp, up.observations), up.hypothesis_loglikelihoods...]
+    hyp_logprobs = deepcopy(up.hypothesis_loglikelihoods)
+    hyp_logprobs[0] = logprob(max_ent_hyp, up.observations)
 
     # Store the history
-    push!(hist, (; s, a, o, r, b, hyp_logprobs))
+    push!(hist, (; s, a, o, r, b, hyp_logprobs, up=deepcopy(up)))
     return hist
 end
 

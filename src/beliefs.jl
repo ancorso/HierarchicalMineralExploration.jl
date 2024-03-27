@@ -6,7 +6,7 @@ mutable struct MCMCUpdater <: Updater
     Nsamples # Number of MCMC iterations
     Ndiscard # Number of MCMC iterations to discard
     hypotheses::OrderedDict{Int, Hypothesis} # Set of hypotheses
-    hypothesis_loglikelihoods::Vector{Float64} # Likelihood of each hypothesis
+    hypothesis_loglikelihoods::OrderedDict{Int, Float64} # Likelihood of each hypothesis
     # N # Number of particles to produce (1 per chain)
     observations::Dict # Observations
     chains::OrderedDict # one chain per hypothesis
@@ -17,7 +17,7 @@ mutable struct MCMCUpdater <: Updater
             Nsamples,
             Ndiscard,
             hypotheses,
-            zeros(length(hypotheses)), # initialize with uniform likelihoods
+            OrderedDict{Int, Float64}(i => 0 for i in keys(hypotheses)), # initialize with uniform likelihoods
             # N,
             observations,
             OrderedDict{Int, Any}(i => nothing for i in keys(hypotheses)),
@@ -86,7 +86,7 @@ function POMDPs.update(up::MCMCUpdater, b::MultiHypothesisBelief)
         end
         # Compute observation likelihoods and add to master list
         loglikelihoods_h = generated_quantities(mcond, up.chains[hi][:, :, 1])[:]
-        loglikelihoods[hi] = logsumexp(loglikelihoods_h) .- log(length(loglikelihoods_h))
+        up.hypothesis_loglikelihoods[hi] = logsumexp(loglikelihoods_h) .- log(length(loglikelihoods_h))
 
         # Sample the actual state particles and add to master list
         os = generated_quantities(mcond_w_samples, up.chains[hi][:, :, 1])[:]
@@ -126,6 +126,7 @@ function POMDPs.update(up::MCMCUpdater, b::MultiHypothesisBelief)
     end
 
     # figure out how many particles to sample for each hypothesis
+    loglikelihoods = collect(values(up.hypothesis_loglikelihoods))
     relative_weights = exp.(values(loglikelihoods) .- logsumexp(values(loglikelihoods)))
     @assert (sum(relative_weights) - 1) < 1e-6
     Nh = floor.(Int, up.Nsamples .* relative_weights)
