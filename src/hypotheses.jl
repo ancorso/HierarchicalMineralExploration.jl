@@ -11,6 +11,36 @@ struct Hypothesis
     geochem_domains::Vector{GeochemicalDomainDistribution} # Geochemical domain distributions
 end
 
+# Return the logpdf of the domain variables
+function domain_logpdf(h::Hypothesis, chainval)
+    logpdf_val = 0.0
+    for (i, g) in enumerate(h.grabens)
+        ltop = chainval[1, Symbol("ltop$i"), 1]
+        lwidth = chainval[1, Symbol("lwidth$i"), 1]
+        rtop = chainval[1, Symbol("rtop$i"), 1]
+        rwidth = chainval[1, Symbol("rwidth$i"), 1]
+        logpdf_val += logpdf(g, ltop, lwidth, rtop, rwidth)
+    end
+    for (i, g) in enumerate(h.geochem_domains)
+        cx = chainval[1, Symbol("cx$i"), 1]
+        cy = chainval[1, Symbol("cy$i"), 1]
+        r1 = chainval[1, Symbol("r1$i"), 1]
+        r2 = chainval[1, Symbol("r2$i"), 1]
+        r3 = chainval[1, Symbol("r3$i"), 1]
+        r4 = chainval[1, Symbol("r4$i"), 1]
+        r5 = chainval[1, Symbol("r5$i"), 1]
+        r6 = chainval[1, Symbol("r6$i"), 1]
+        r7 = chainval[1, Symbol("r7$i"), 1]
+        r8 = chainval[1, Symbol("r8$i"), 1]
+        r9 = chainval[1, Symbol("r9$i"), 1]
+        r10 = chainval[1, Symbol("r10$i"), 1]
+
+        logpdf_val += logpdf(g, cx, cy, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)
+    end
+    return logpdf_val
+end
+
+
 """
     A hypothesis that assumes the maximum entropy distribution over the observations
 """

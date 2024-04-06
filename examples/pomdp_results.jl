@@ -11,6 +11,7 @@ using NativeSARSOP
 using POMDPTools
 using JLD2
 using DataStructures
+using LogExpFunctions
 ## Setup mineral system models and the POMDP solver helpers and runners
 include("setup.jl")
 include("pomdp_tools.jl")
@@ -20,19 +21,12 @@ include("pomdp_tools.jl")
 output_dir = "outputs/all/"
 pomdp = HierarchicalMinExPOMDP()
 
-
-results = Array{Any}(undef, 10)
-for i=1:10
-    try
-        result = load("outputs/all/results$(i).jld2")["results"]
-        # hist = load("outputs/all/history_gridsearch$(i).jld2")["history"]
-        # hist = load("outputs/all/history_1correct$(i).jld2")["history"]
-        # hist = load("outputs/all/history_3incorrect$(i).jld2")["history"]
-        # hist = load("outputs/all/history_4withcorrect$(i).jld2")["history"]
-        # hist = load("outputs/all/history_rejuvination$(i).jld2")["history"]
-        results[i] = result
-    catch
-    end
+files = [f for f in readdir(output_dir) if occursin("results", f)]
+Nfiles = length(files)
+results = Array{Any}(undef, Nfiles)
+for (i, file) in enumerate(files)
+    println("loading $file...")
+    results[i] = load(joinpath(output_dir,file))["results"]
 end
 # [isdefined(histories, i) for i in eachindex(histories)]
 # results = results[[isassigned(results, i) for i in eachindex(results)]];
@@ -51,15 +45,24 @@ function get_mean_minmax_r(step)
     meanr, minmaxr
 end
 
+## Plot some gifs of each one
+for (i, result) in enumerate(results)
+    for (alg, hist) in result
+        plot_gif(pomdp, hist, "$(output_dir)/history_$alg$i.gif")
+    end
+end
+
+# Accuracies
 algs = keys(results[1])
 for k in algs
     println(k, ": ", mean([iscorrect(result[k], pomdp) for result in results]))
 end
 
-alg = "1correct"
+
+## Plot the reward of each hypothesis
+alg = "gridsearch"
 plots = []
 for i=1:length(results)
-    !isassigned(results, i) && continue
     hist = results[i][alg]
     r = [extraction_reward(pomdp, h.s) for h in hist]
     meanrs = [get_mean_minmax_r(step)[1] for step in hist]
@@ -75,23 +78,48 @@ for i=1:length(results)
 end
 plot(plots...)
 
-r = [extraction_reward(pomdp, h.s) for h in hist]
-meanrs = [get_mean_std_r(step)[1] for step in hist]
-stdsrs = [get_mean_std_r(step)[2] for step in hist]
+## Plot the likelihood of each hypothesis
+alg = "3incorrect"
+plots = []
+for i=1:length(results)
+    hist = results[i][alg]
+    hist[1].hyp_logprobs
+    hyp_logprobs_dict = Dict(k => [] for k in keys(hist[1].hyp_logprobs))
+    for (t, h) in enumerate(hist)
+        for (k, v) in h.hyp_logprobs
+            # k==0 && continue
+            if t > 1 && k > 0 
+                chn = h.up.chains[k]
+                Nsamples = size(chn, 1)
 
-plot(meanrs, ribbon=stdsrs)
-plot!(r)
+                #TODO For bridge density, we need samples from the priors and the data likelihood as well. 
+                g1s = [chn[i, :lp, 1] for i=1:Nsamples]
+                g2s = [domain_logpdf(hypotheses[k], chn[i, :, 1]) for i=1:Nsamples]
+                gbs = (g1s .+ g2s)/2
+                v = (logsumexp(gbs .- g2s) .- log(length(gbs)))  - (logsumexp(gbs .- g1s) .- log(length(gbs)))
+            end
+            push!(hyp_logprobs_dict[k], v)
+        end
+    end
 
-
-rs = [extraction_reward(pomdp, s) for s in particles(hist[end].b.particles)]
-
-histogram!(rs)
+    p = plot()
+    for (k, v) in hyp_logprobs_dict
+        plot!(v, label=k, linewidth=2, xlims=(0,36))
+    end
+    push!(plots, p)
+end
+plot(plots..., size=(2000,1500))
 
 ## Plot the belief of a particular step
-hist = results[4]["rejuvination"]
-b = hist[end].b
+hist = results[1]["gridsearch"]
+
+# Plot the state
+plot_state(hist[4].s)
+
+N = 36
+b = hist[N].b
 observations = Dict()
-for step in hist[1:end-1]
+for step in hist[1:N-1]
     a = step.a
     o = step.o
     observations[a] = (thickness=o[1], grade=o[2])

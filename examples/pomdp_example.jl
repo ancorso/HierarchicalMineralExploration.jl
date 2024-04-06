@@ -18,7 +18,7 @@ include("pomdp_tools.jl")
 
 
 # Set up the output directory
-output_dir = "outputs/all/"
+output_dir = "../outputs/all"
 try
     mkdir(output_dir)
 catch
@@ -46,19 +46,19 @@ s_gt = HierarchicalMinExState(res_gt.thickness, res_gt.grade)
 
 # Run Grid search
 history = run_gridsearch(pomdp, s_gt, hypotheses, max_ent_hypothesis; Nsamples)
-plot_gif(pomdp, history, "$(output_dir)/history_gridsearch$i.gif")
+# plot_gif(pomdp, history, "$(output_dir)/history_gridsearch$i.gif")
 @save "$(output_dir)/history_gridsearch$i.jld2" history
 results["gridsearch"] = history
 
 # Run POMDP with correct hypothesis
 history = run_trial(pomdp, s_gt, OrderedDict(1 => h_gt), max_ent_hypothesis; Nsamples)
-plot_gif(pomdp, history, "$(output_dir)/history_1correct$i.gif")
+# plot_gif(pomdp, history, "$(output_dir)/history_1correct$i.gif")
 @save "$(output_dir)/history_1correct$i.jld2" history
 results["1correct"] = history
 
 # Run POMDP with all 4 hypotheses
 history = run_trial(pomdp, s_gt, hypotheses, max_ent_hypothesis; Nsamples)
-plot_gif(pomdp, history, "$(output_dir)/history_4withcorrect$i.gif")
+# plot_gif(pomdp, history, "$(output_dir)/history_4withcorrect$i.gif")
 @save "$(output_dir)/history_4withcorrect$i.jld2" history
 results["4withcorrect"] = history
 
@@ -66,7 +66,7 @@ results["4withcorrect"] = history
 history = run_trial(
     pomdp, s_gt, OrderedDict(i=>hypotheses[i] for i=2:4), max_ent_hypothesis; Nsamples
 )
-plot_gif(pomdp, history, "$(output_dir)/history_3incorrect$i.gif")
+# plot_gif(pomdp, history, "$(output_dir)/history_3incorrect$i.gif")
 @save "$(output_dir)/history_3incorrect$i.jld2" history
 results["3incorrect"] = history
 
@@ -74,7 +74,7 @@ results["3incorrect"] = history
 history = run_trial_rejuvination(
     pomdp, s_gt, OrderedDict(i=>hypotheses[i] for i=4:-1:1), max_ent_hypothesis; Nsamples
 )
-plot_gif(pomdp, history, "$(output_dir)/history_rejuvination$i.gif")
+# plot_gif(pomdp, history, "$(output_dir)/history_rejuvination$i.gif")
 @save "$(output_dir)/history_rejuvination$i.jld2" history
 results["rejuvination"] = history
 

@@ -27,6 +27,10 @@ Defines the distributions used to sample geochemical domains.
     kernel      # Kernel of the GP within this domain
 end
 
+function Distributions.logpdf(d::GeochemicalDomainDistribution, cx, cy, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)
+    logpdf(d.cx, cx) + logpdf(d.cy, cy) + logpdf(d.r1, r1) + logpdf(d.r2, r2) + logpdf(d.r3, r3) + logpdf(d.r4, r4) + logpdf(d.r5, r5) + logpdf(d.r6, r6) + logpdf(d.r7, r7) + logpdf(d.r8, r8) + logpdf(d.r9, r9) + logpdf(d.r10, r10)
+end
+
 """
 Draws a sample of the center, points and angle that make up the blob shape
 """
@@ -94,6 +98,10 @@ Defines the distributions used to sample a Graben shape.
     right_top = Distributions.Normal(N/2.0, N/2.0)
     right_width = Distributions.Normal(N/4.0, N/4.0)
     μ           # Mean of the GP within this domain
+end
+
+function Distributions.logpdf(d::GrabenDistribution, lt, lw, rt, rw)
+    logpdf(d.left_top, lt) + logpdf(d.left_width, lw) + logpdf(d.right_top, rt) + logpdf(d.right_width, rw)
 end
 
 """

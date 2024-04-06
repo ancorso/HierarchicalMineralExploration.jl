@@ -26,8 +26,7 @@ export GeochemicalDomainDistribution, draw_geochemical_domain
 export GrabenDistribution, draw_graben
 
 include("hypotheses.jl")
-export Hypothesis, MaxEntropyHypothesis, turing_model, default_alg, logprob
-export one_graben_one_geochem
+export Hypothesis, MaxEntropyHypothesis, turing_model, default_alg, logprob, domain_logpdf
 export one_graben_two_geochem
 export two_graben_one_geochem
 export two_graben_two_geochem
