@@ -45,12 +45,12 @@ function get_mean_minmax_r(step)
     meanr, minmaxr
 end
 
-## Plot some gifs of each one
-for (i, result) in enumerate(results)
-    for (alg, hist) in result
-        plot_gif(pomdp, hist, "$(output_dir)/history_$alg$i.gif")
-    end
-end
+# ## Plot some gifs of each one
+# for (i, result) in enumerate(results)
+#     for (alg, hist) in result
+#         plot_gif(pomdp, hist, "$(output_dir)/history_$alg$i.gif")
+#     end
+# end
 
 # Accuracies
 algs = keys(results[1])
@@ -60,7 +60,7 @@ end
 
 
 ## Plot the reward of each hypothesis
-alg = "gridsearch"
+alg = "4withcorrect"
 plots = []
 for i=1:length(results)
     hist = results[i][alg]
@@ -78,6 +78,11 @@ for i=1:length(results)
 end
 plot(plots...)
 
+# TODO: one plot that shows accuracy over bore holes
+
+# TODO: 3 incorect - ID 3 is an example, where a second geochemical domain lead to an incorrect decision. 
+
+
 ## Plot the likelihood of each hypothesis
 alg = "3incorrect"
 plots = []
@@ -87,24 +92,34 @@ for i=1:length(results)
     hyp_logprobs_dict = Dict(k => [] for k in keys(hist[1].hyp_logprobs))
     for (t, h) in enumerate(hist)
         for (k, v) in h.hyp_logprobs
-            # k==0 && continue
-            if t > 1 && k > 0 
-                chn = h.up.chains[k]
-                Nsamples = size(chn, 1)
-
-                #TODO For bridge density, we need samples from the priors and the data likelihood as well. 
-                g1s = [chn[i, :lp, 1] for i=1:Nsamples]
-                g2s = [domain_logpdf(hypotheses[k], chn[i, :, 1]) for i=1:Nsamples]
-                gbs = (g1s .+ g2s)/2
-                v = (logsumexp(gbs .- g2s) .- log(length(gbs)))  - (logsumexp(gbs .- g1s) .- log(length(gbs)))
+            if k==0
+                observations = Dict()
+                for step in hist[1:t-1]
+                    a = step.a
+                    o = step.o
+                    observations[a] = (thickness=o[1], grade=o[2])
+                end
+                # println(observations)
+                v = logprob(max_ent_hypothesis2, observations)
             end
+            # k==0 && continue
+            # if t > 1 && k > 0 
+            #     chn = h.up.chains[k]
+            #     Nsamples = size(chn, 1)
+
+            #     #TODO For bridge density, we need samples from the priors and the data likelihood as well. 
+            #     g1s = [chn[i, :lp, 1] for i=1:Nsamples]
+            #     g2s = [domain_logpdf(hypotheses[k], chn[i, :, 1]) for i=1:Nsamples]
+            #     gbs = (g1s .+ g2s)/2
+            #     v = (logsumexp(gbs .- g2s) .- log(length(gbs)))  - (logsumexp(gbs .- g1s) .- log(length(gbs)))
+            # end
             push!(hyp_logprobs_dict[k], v)
         end
     end
 
     p = plot()
     for (k, v) in hyp_logprobs_dict
-        plot!(v, label=k, linewidth=2, xlims=(0,36))
+        plot!(v, label=k, linewidth=2,)
     end
     push!(plots, p)
 end

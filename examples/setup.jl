@@ -39,6 +39,11 @@ hypotheses = OrderedDict(
 )
 max_ent_hypothesis = MaxEntropyHypothesis(Normal(8, 8), Normal(8, 8))
 
+max_ent_hypothesis2 = MaxEntropyHypothesis(
+    MixtureModel([Normal(1.0, sqrt(0.1)), Normal(7.5, sqrt(0.1)), Normal(9.5, sqrt(0.1))], [0.5, 0.25, 0.25]), #thickness
+    MixtureModel([Normal(0.0, sqrt(0.1)), Normal(7.5, sqrt(0.1)), Normal(9.5, sqrt(0.1))], [0.5, 0.25, 0.25]) # grade
+)
+
 # ## Visualize the different hypotheses
 # pomdp = HierarchicalMinExPOMDP(; extraction_cost=0)
 # hi = 2
