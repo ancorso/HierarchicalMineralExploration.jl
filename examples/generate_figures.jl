@@ -3,6 +3,8 @@ using Turing
 using Plots
 using StatsPlots
 using AbstractGPs
+using DataStructures
+using Plots; default(fontfamily="Computer Modern", framestyle=:box, palette=:seaborn_dark, dpi=300)
 
 ## Setup mineral system models
 include("setup.jl")
@@ -11,6 +13,22 @@ include("setup.jl")
 sample1 = turing_model(hypotheses[1])(Dict(), hypotheses[1], true)()
 plot_model(; sample1...)
 savefig("figures/hypothesis1.png")
+
+heatmap(sample1.structural'; cmap=:amp, colorbar=false)
+savefig("outputs/figures/structural.png")
+heatmap(sample1.thickness';  colorbar=false)
+savefig("outputs/figures/thickness.png")
+
+
+sample1
+mineralization = sample1.thickness .* sample1.grade
+pthickness = heatmap(sample1.thickness'; colorbar=false,title="Thickness")
+pgrade = heatmap(sample1.grade'; colorbar=false,title="Grade")
+pmin = heatmap(mineralization'; colorbar=false, cmap=:haline, title="Mineralization")
+
+plot(pthickness, pgrade, pmin; layout=(1,3), axis=false, size=(900, 300), dpi=300)
+savefig("outputs/figures/hypothesis1_components.png")
+# imgl = imfilter(s.thickness', ImageFiltering.Kernel.Laplacian());
 
 sample2 = turing_model(hypotheses[2])(Dict(), hypotheses[2], true)()
 plot_model(; sample2...)
@@ -24,21 +42,29 @@ sample4 = turing_model(hypotheses[4])(Dict(), hypotheses[4], true)()
 plot_model(; sample4...)
 savefig("figures/hypothesis4.png")
 
+p1 = plot_state(sample1)
+p2 = plot_state(sample2)
+p3 = plot_state(sample3)
+p4 = plot_state(sample4)
+
+plot(p1, p2, p3, p4, axis=false)
+savefig("outputs/figures/hypothesies.png")
+
 ## Choose a ground truth hypothesis
 h_gt = hypotheses[1]
 m_type_gt = turing_model(h_gt)
 m = m_type_gt(Dict(), h_gt, true)
-sample = m()
+sample0 = m()
 
 # Obtain some observations
 pts = [[rand(1:N), rand(1:N)] for _ in 1:40]
 observations = Dict(
-    p => (thickness=sample.thickness[p...], grade=sample.grade[p...]) for p in pts
+    p => (thickness=sample0.thickness[p...], grade=sample0.grade[p...]) for p in pts
 )
 
 # Visualize the model and observations
-plot_model(; sample..., observations=observations)
-savefig("figures/observations.png")
+plot_model(; sample0..., observations=observations)
+savefig("outputs/figures/observations.png")
 
 ## Show what conditioning a hypothesis to a given set of data looks like
 h = hypotheses[1]

@@ -230,7 +230,7 @@ function plot_gif(pomdp, history, filename)
         observations = Dict(
             step.a => (thickness=step.o[1], grade=step.o[2]) for step in history[1:(i - 1)]
         )
-        plot_step(pomdp, history[i], observations; size=(1200, 600))
+        plot_step(pomdp, history[i], observations; size=(1200, 600), bottom_margin=5Plots.mm)
     end
     return gif(anim, filename; fps=2)
 end
